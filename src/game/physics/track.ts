@@ -210,6 +210,20 @@ export class Track {
     return xs[bi];
   }
 
+  /**
+   * Ana yolun verilen yükseklikteki yatay kesiti (sol ve sağ kenar x'i).
+   * Yol çaprazken bu kesit yol genişliğinden geniştir; kontrol çizgisi bununla çizilir.
+   */
+  spanAt(y: number): [number, number] {
+    const cx = this.centerXAt(y);
+    const inside = (x: number) => nearestOnLine(this.main, x, y, this.tmp) && this.tmp.dist < this.tmp.halfWidth;
+    let l = cx;
+    let r = cx;
+    while (l > 0 && inside(l - 4)) l -= 4;
+    while (r < 2000 && inside(r + 4)) r += 4;
+    return [l, r];
+  }
+
   /** Ana yolun verilen yükseklikteki genişliği. */
   widthAt(y: number, line: Polyline = this.main): number {
     const { ws, ys, count } = line;

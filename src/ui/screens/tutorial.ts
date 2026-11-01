@@ -1,4 +1,4 @@
-// "Nasıl oynanır?" kartı: sadece birinci etap açılırken gösterilir.
+// "Nasıl oynanır?" kartı: birinci etap açılırken ve açılış ekranındaki "i" düğmesiyle gösterilir.
 
 import { t } from '../../i18n';
 import type { App } from '../app';
@@ -11,20 +11,26 @@ function row(icon: string, title: string, body: string, tint: string): HTMLEleme
   return h('div.tut-row', [h('div.tut-ico', { style: { background: tint }, html: icon }), h('div', [h('b', title), h('p', body)])]);
 }
 
-export function tutorialOverlay(app: App, onStart: () => void, onSettings: () => void): HTMLElement {
+/** onSettings verilmezse kart sadece bilgi içindir (açılış ekranı): tek "Tamam" düğmesi. */
+export function tutorialOverlay(app: App, onStart: () => void, onSettings?: () => void): HTMLElement {
   void app;
+  const btns = onSettings
+    ? [
+        h('button.btn-primary', { onclick: onStart }, [svg(icons.play(20)), t('tutorial.start')]),
+        h('button.btn-secondary', { onclick: onSettings }, [svg(icons.gear()), t('tutorial.settings')]),
+      ]
+    : [h('button.btn-primary', { onclick: onStart }, [svg(icons.check()), t('tutorial.close')])];
   return h('div.overlay', [
     h('div.sheet.tut', [
       h('h2', t('tutorial.title')),
       row(GOAL_ICON, t('tutorial.goal.title'), t('tutorial.goal.body'), '#E6F3EC'),
       row(icons.rope(), t('tutorial.ropes.title'), t('tutorial.ropes.body'), '#FCF1DA'),
       row(icons.phone(), t('tutorial.tilt.title'), t('tutorial.tilt.body'), '#EEEAF7'),
+      row(icons.rings(), t('tutorial.vacuum.title'), t('tutorial.vacuum.body'), '#E3EEF6'),
       row(icons.gear(), t('tutorial.settings.title'), t('tutorial.settings.body'), '#F1ECE3'),
       h('p.tut-tip', [svg(icons.star(16)), t('tutorial.tip')]),
-      h('div.btns', [
-        h('button.btn-primary', { onclick: onStart }, [svg(icons.play(20)), t('tutorial.start')]),
-        h('button.btn-secondary', { onclick: onSettings }, [svg(icons.gear()), t('tutorial.settings')]),
-      ]),
+      row(icons.keys(), t('tutorial.keys.title'), t('tutorial.keys.body'), '#ECEEF1'),
+      h('div.btns', btns),
     ]),
   ]);
 }

@@ -202,5 +202,11 @@
   "tutorial.settings.body": "Bu iki yoldan hangisiyle oynayacağını, tek halatın hangi tarafta olacağını ve hassasiyeti Ayarlar'dan değiştirebilirsin.",
   "tutorial.tip": "Ne kadar hızlı bitirirsen o kadar çok yıldız kazanırsın. Yoldaki 3 yıldızı da toplamayı dene!",
   "tutorial.start": "Başla",
-  "tutorial.settings": "Ayarları aç"
+  "tutorial.settings": "Ayarları aç",
+  "tutorial.vacuum.title": "Halkalar",
+  "tutorial.vacuum.body": "Yoldaki iç içe halkalar topu yavaşça yolun ortasına çeker. Topu yolda tutmana yardım ederler.",
+  "tutorial.keys.title": "Klavyeyle",
+  "tutorial.keys.body": "Sol halat: W yukarı, S aşağı. Sağ halat: ↑ yukarı, ↓ aşağı. İkisini aynı anda kullanabilirsin.",
+  "tutorial.close": "Tamam",
+  "title.info": "Nasıl oynanır?"
 }

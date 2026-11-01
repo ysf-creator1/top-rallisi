@@ -124,11 +124,10 @@ export class TrackSurface {
     ctx.setLineDash([13 * ppu, 10 * ppu]);
     for (const cy of this.checkpoints) {
       if (cy < y0 - 50 || cy > y1 + 50) continue;
-      const cx = this.track.centerXAt(cy);
-      const hw = this.track.widthAt(cy) / 2 - 14;
+      const [l, r] = this.track.spanAt(cy);
       ctx.beginPath();
-      ctx.moveTo(toX(cx - hw), toY(cy));
-      ctx.lineTo(toX(cx + hw), toY(cy));
+      ctx.moveTo(toX(l + 14), toY(cy));
+      ctx.lineTo(toX(r - 14), toY(cy));
       ctx.stroke();
     }
     ctx.restore();

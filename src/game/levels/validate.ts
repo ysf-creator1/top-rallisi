@@ -1,7 +1,7 @@
 // Etap JSON doğrulaması (tarif Bölüm 9). Hem testlerde hem önizleyicide kullanılır.
 
 import { physics } from '../../config/physics';
-import { Track } from '../physics/track';
+import { Track, type Polyline } from '../physics/track';
 import type { LevelData, RoadPoint } from './types';
 
 export interface ValidationResult {
@@ -26,6 +26,33 @@ function checkPoints(pts: unknown, label: string, errors: string[], W: number): 
   return errors.length === 0;
 }
 
+/** Ana yolun birbirinden uzak iki kısmı birbirine değiyor mu? */
+export function selfOverlaps(line: Polyline, gap = 40): boolean {
+  const { xs, ys, ws, len, count } = line;
+  for (let i = 0; i < count; i += 2) {
+    for (let j = i + 2; j < count; j += 2) {
+      const need = (ws[i] + ws[j]) / 2 + gap;
+      if (len[j] - len[i] < need * 1.6) continue;
+      const dx = xs[i] - xs[j];
+      const dy = ys[i] - ys[j];
+      if (dx * dx + dy * dy < need * need) return true;
+    }
+  }
+  return false;
+}
+
+/** Ana yol verilen yüksekliği kaç kez geçiyor? (Kontrol noktası tek geçişte olmalı) */
+export function crossings(line: Polyline, y: number): number {
+  const { ys, count } = line;
+  let n = 0;
+  for (let i = 0; i < count - 1; i++) {
+    const y0 = ys[i];
+    const y1 = ys[i + 1];
+    if ((y0 < y && y1 >= y) || (y0 > y && y1 <= y)) n++;
+  }
+  return n;
+}
+
 export function validateLevel(raw: unknown): ValidationResult {
   const errors: string[] = [];
   const L = raw as LevelData;
@@ -39,8 +66,12 @@ export function validateLevel(raw: unknown): ValidationResult {
   const W = L.boardWidth;
 
   if (!checkPoints(L.road, 'road', errors, W)) return { ok: false, errors };
+  // Yol aşağı dönebilir ama başlangıcın altına inemez (çubuk oraya inemez)
   for (let i = 1; i < L.road.length; i++) {
-    if (L.road[i].y <= L.road[i - 1].y) errors.push(`road[${i}]: y yukarı doğru artmalı`);
+    const p = L.road[i];
+    const q = L.road[i - 1];
+    if (Math.hypot(p.x - q.x, p.y - q.y) < 40) errors.push(`road[${i}]: önceki noktaya çok yakın`);
+    if (p.y < L.road[0].y) errors.push(`road[${i}]: başlangıcın altına inemez`);
   }
   for (const [bi, b] of (L.branches ?? []).entries()) {
     if (b.type !== 'short' && b.type !== 'long') errors.push(`branches[${bi}]: type 'short' ya da 'long' olmalı`);
@@ -56,6 +87,7 @@ export function validateLevel(raw: unknown): ValidationResult {
 
   const track = new Track(L);
   const start = L.road[0];
+  if (selfOverlaps(track.main)) errors.push('road: yol kendi üstüne biniyor (iki kısım çok yakın)');
   const top = L.road[L.road.length - 1];
   if (!track.isOnTrack(h.x, h.y)) errors.push('finishHole pistin üzerinde olmalı');
   if (h.y > top.y + 1) errors.push('finishHole yolun sonunu geçmemeli');
@@ -73,6 +105,7 @@ export function validateLevel(raw: unknown): ValidationResult {
   cps.forEach((c, i) => {
     if (!isNum(c) || c <= start.y || c >= h.y) errors.push(`checkpoints[${i}]: başlangıç ile bitiş arasında olmalı`);
     if (i > 0 && c <= cps[i - 1]) errors.push('checkpoints artan sırada olmalı');
+    if (isNum(c) && crossings(track.main, c) !== 1) errors.push(`checkpoints[${i}]: yol bu yüksekliği bir kez geçmeli`);
   });
   if (cps.length > 3) errors.push('en fazla 3 kontrol noktası');
 

@@ -40,6 +40,10 @@ export interface RenderState {
   ballY: number;
   roll: number;
   ballScale: number;
+  /** Düşme animasyonu: t 0→1, dir topun kaydığı yön (−1 sol, +1 sağ); düşmüyorsa null */
+  fall?: { t: number; dir: number } | null;
+  /** Yeniden doğma: 0→1 (1 = bitti) */
+  spawn?: number;
   ghost: { yL: number; yR: number; x: number; y: number; scale: number } | null;
   ropes: [RopeVisual, RopeVisual];
   time: number;
@@ -394,7 +398,28 @@ export class GameRenderer {
     this.placeCameras();
     if (this.bar) this.bar.update(st.yL, st.yR);
     if (this.ball) {
-      this.ball.update((st.ballX - 500) * S, st.ballY * S, BAR_Z, st.roll, st.ballScale, st.time);
+      let x = (st.ballX - 500) * S;
+      let y = st.ballY * S;
+      let z = BAR_Z;
+      let roll = st.roll;
+      let sc = st.ballScale;
+      const R = physics.ballRadius * S;
+      if (st.fall) {
+        // Çubuktan geriye ve aşağı yumuşakça süzülür, hafifçe döner, küçülür
+        const t = st.fall.t;
+        const e = t * t;
+        x += st.fall.dir * t * R * 1.2;
+        y -= e * R * 4;
+        roll += st.fall.dir * t * 2.4;
+        sc = (1 - 0.65 * e) * Math.min(1, (1 - t) / 0.18);
+        z = Math.max(0.05 + R * sc, BAR_Z - e * 0.4);
+      } else if (st.spawn !== undefined && st.spawn < 1) {
+        // Küçük bir "belirme": hafifçe büyüyüp yerine oturur
+        const p = st.spawn - 1;
+        const c = 1.2;
+        sc *= Math.max(0, 1 + (c + 1) * p * p * p + c * p * p);
+      }
+      this.ball.update(x, y, z, roll, sc, st.time);
     }
     if (st.ghost && this.ghostBar && this.ghostBall) {
       this.ghostBar.group.visible = this.ghostBall.root.visible = true;

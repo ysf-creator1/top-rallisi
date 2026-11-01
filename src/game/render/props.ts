@@ -73,10 +73,9 @@ export class Props {
 
     // Kontrol noktası bayrakları
     for (const cy of checkpoints) {
-      const cx = track.centerXAt(cy);
-      const hw = track.widthAt(cy) / 2;
+      const right = track.spanAt(cy)[1];
       const f = flag('#8CCFB4', 0.55);
-      f.position.set(lx(cx + hw - 8), cy * S, 0.08);
+      f.position.set(lx(right - 8), cy * S, 0.08);
       this.group.add(f);
       this.cpFlags.push(f);
     }

@@ -29,6 +29,10 @@ export const icons = {
     `<svg width="44" height="36" viewBox="0 0 44 36" aria-hidden="true"><path d="M6 24 Q22 34 38 24" fill="none" stroke="#B3A3E0" stroke-width="2.2" stroke-linecap="round"/><g transform="rotate(14 22 17)"><rect x="15" y="4" width="14" height="24" rx="3.5" fill="#FBF7F0" stroke="#3B3F45" stroke-width="2.2"/></g><circle cx="33" cy="12" r="3" fill="#B3A3E0"/></svg>`,
   rope: () =>
     `<svg width="28" height="36" viewBox="0 0 28 36" aria-hidden="true"><rect x="11" y="1" width="6" height="24" rx="3" fill="#DCC29A"/><path d="M11 6l6 -3M11 11l6-3M11 16l6-3M11 21l6-3" stroke="#BC9C6E" stroke-width="1.6"/><ellipse cx="14" cy="28" rx="6.5" ry="6" fill="#DCC29A" stroke="#A98B5F"/><path d="M14 18v-8" stroke="#3B3F45" stroke-width="2" stroke-linecap="round"/><path d="M11 13l3 3 3-3" fill="none" stroke="#3B3F45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 2)"/></svg>`,
+  keys: () =>
+    line('<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7 14h10"/>'),
+  rings: () => line('<circle cx="12" cy="12" r="8.5" opacity=".45"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>'),
+  info: () => line('<path d="M12 10.8v7"/><circle cx="12" cy="6.6" r="1.6" fill="currentColor" stroke="none"/>', 24, 'currentColor', 3),
   flag: () => line('<path d="M6 21V4"/><path d="M6 4.5h11l-2.5 3.5L17 11.5H6"/>'),
   check: () => line('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   minus: () => line('<path d="M6 12h12"/>'),

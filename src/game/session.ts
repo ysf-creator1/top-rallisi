@@ -10,7 +10,7 @@ import { GhostPlayer, GhostRecorder, ballScale, type GhostData, type GhostFrame 
 import type { KeyboardInput } from './input/keyboard';
 import type { RopeInput } from './input/ropes';
 import type { LevelData } from './levels/types';
-import { Simulation, type SimEvent } from './physics/sim';
+import { FALL_DURATION, Simulation, type SimEvent } from './physics/sim';
 import type { GameRenderer, RenderState } from './render/scene';
 
 export interface SessionOptions {
@@ -48,6 +48,9 @@ export class GameSession {
   sim: Simulation;
   paused = false;
   autopilot: Autopilot | null = null;
+  /** Düşme animasyonu için topun kaydığı yön ve son yeniden doğma anı */
+  private fallDir = 1;
+  private spawnAt = -10;
   private acc = 0;
   private time = 0;
   private recorder = new GhostRecorder();
@@ -194,6 +197,7 @@ export class GameSession {
           this.cb.onCheckpoint?.(e.index);
           break;
         case 'fall':
+          this.fallDir = this.sim.v < 0 ? -1 : 1;
           if (!quiet) {
             play('fall');
             vibrate([30, 40, 30]);
@@ -202,6 +206,7 @@ export class GameSession {
           this.cb.onFall?.();
           break;
         case 'respawn':
+          this.spawnAt = this.time;
           this.renderer.follow(this.sim.ballY, 0.3);
           this.cb.onRespawn?.();
           break;
@@ -250,6 +255,8 @@ export class GameSession {
       ballY: sim.ballY,
       roll: sim.roll,
       ballScale: ballScale(sim),
+      fall: sim.phase === 'falling' ? { t: Math.min(1, sim.phaseTime / (FALL_DURATION * 0.85)), dir: this.fallDir } : null,
+      spawn: Math.min(1, (this.time - this.spawnAt) / 0.32),
       ghost,
       ropes: [rope(0), rope(1)],
       time: this.time,
