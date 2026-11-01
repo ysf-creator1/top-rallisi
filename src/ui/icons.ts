@@ -11,6 +11,13 @@ export const icons = {
   back: () => line('<path d="M14.5 6l-6 6 6 6"/>', 22),
   star: (size = 18, filled = true) =>
     `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}" fill="${filled ? '#F2C46D' : '#ECE7DF'}" stroke="${filled ? '#DDA94B' : '#D6CFC4'}" stroke-width="${size > 30 ? 0.8 : 1}" stroke-linejoin="round"/></svg>`,
+  /** Süre madalyası: 0 yok, 1 bronz, 2 gümüş, 3 altın */
+  medal: (size = 18, tier = 3) => {
+    const c = ['#ECE7DF', '#D9A27A', '#CBD3DA', '#F2C46D'][tier] ?? '#ECE7DF';
+    const e = ['#D6CFC4', '#B97F55', '#A3AEB8', '#DDA94B'][tier] ?? '#D6CFC4';
+    const rib = tier ? '#8CCFB4' : '#E2DDD4';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><g><path d="M7.5 1.5h4l1.6 6.5h-4zM16.5 1.5h-4l-1.6 6.5h4z" fill="${rib}"/><circle cx="12" cy="14.5" r="7.6" fill="${c}" stroke="${e}" stroke-width="1.2"/><circle cx="12" cy="14.5" r="4.6" fill="none" stroke="${e}" stroke-width="1" opacity=".7"/></g></svg>`;
+  },
   coin: (size = 18) =>
     `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#F2C46D" stroke="#DDA94B" stroke-width="1.4"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="#DDA94B" stroke-width="1.4"/></svg>`,
   lock: (size = 16, color = '#6A7078') =>
@@ -22,6 +29,7 @@ export const icons = {
   bag: () => line('<path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
   play: (size = 22) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>`,
   restart: () => line('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>'),
+  home: () => line('<path d="M4 11.5L12 4.5l8 7"/><path d="M6.5 9.8V19.5h11V9.8"/><path d="M10 19.5v-5h4v5"/>'),
   map: () => line('<path d="M9 4.5L3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/>'),
   ghost: () => line('<path d="M6 20V11a6 6 0 0 1 12 0v9l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z"/><circle cx="9.8" cy="11" r=".6" fill="currentColor"/><circle cx="14.2" cy="11" r=".6" fill="currentColor"/>'),
   swap: () => line('<path d="M4 8h14l-3-3M20 16H6l3 3"/>'),
@@ -85,7 +93,7 @@ export function costumeIcon(category: string, key: string, tint: string): string
       return s(`<circle cx="22" cy="17" r="13" fill="#FBFBFC" stroke="#DCE1E5"/><clipPath id="jc${key}"><circle cx="22" cy="17" r="13"/></clipPath><g clip-path="url(#jc${key})">${bands}${second}</g>`);
     }
     case 'number':
-      return s(`<circle cx="22" cy="17" r="12" fill="#FBF7F0" stroke="#E8907E" stroke-width="2.4"/><text x="22" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="13" fill="#3B3F45">12</text>`);
+      return s(`<circle cx="22" cy="17" r="12" fill="#FBF7F0" stroke="#E8907E" stroke-width="2.4"/><text x="22" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="13" fill="#3B3F45">${/^\d+$/.test(key) ? key : 12}</text>`);
   }
   return s('');
 }

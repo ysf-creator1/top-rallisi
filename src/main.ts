@@ -45,7 +45,15 @@ async function boot(): Promise<void> {
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     const updateSW = registerSW({
       onNeedRefresh() {
-        toast(app, t('pwa.update'), { label: t('pwa.reload'), run: () => void updateSW(true) }, 0);
+        // Oyun sırasında rahatsız etmesin: etap bitene kadar bekler
+        const show = () => {
+          if (app.screen === 'game' && app.session && app.session.sim.phase !== 'finished') {
+            setTimeout(show, 2000);
+            return;
+          }
+          toast(app, t('pwa.update'), { label: t('pwa.reload'), run: () => void updateSW(true) }, 0, true);
+        };
+        show();
       },
       onOfflineReady() {
         toast(app, t('pwa.offline'));

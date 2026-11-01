@@ -27,10 +27,10 @@ describe('etap JSON doğrulaması', () => {
     expect(validateLevel(null).ok).toBe(false);
   });
 
-  test('Dünya 3 etaplarında kısa yol ve tabela var', () => {
+  test('Dünya 3 etaplarında kısa yol var, tabela yok', () => {
     for (const l of levels.filter((x) => x.world === 3)) {
       expect(l.branches?.length).toBeGreaterThan(0);
-      expect(l.signs?.length).toBeGreaterThan(0);
+      expect(l.signs).toBeUndefined();
     }
   });
 });

@@ -44,6 +44,10 @@ export interface SessionCallbacks {
   onFinish?(result: SessionResult): void;
 }
 
+/** Kamera turunun iniş süresi; toplam tur = INTRO_HOLD + INTRO_PAN */
+const INTRO_PAN = 1.6;
+const INTRO_HOLD = 0.6;
+
 export class GameSession {
   sim: Simulation;
   paused = false;
@@ -51,6 +55,8 @@ export class GameSession {
   /** Düşme animasyonu için topun kaydığı yön ve son yeniden doğma anı */
   private fallDir = 1;
   private spawnAt = -10;
+  /** Etap başı kamera turu (sn): önce bitiş deliği görünür, sonra kamera topa iner */
+  private intro = 0;
   private acc = 0;
   private time = 0;
   private recorder = new GhostRecorder();
@@ -81,6 +87,7 @@ export class GameSession {
     if (opts.attract) this.autopilot = new Autopilot();
     if (opts.control === 'tilt' && !opts.attract) this.calibrating = 1.0;
     renderer.follow(this.sim.ballY, 0, true);
+    if (!opts.attract) this.intro = INTRO_HOLD + INTRO_PAN;
   }
 
   get raceTime(): number {
@@ -126,7 +133,17 @@ export class GameSession {
       setRoll(speed);
     }
     this.ropes.update(dt, [-window.innerHeight * 0.42, window.innerHeight * 0.16]);
-    this.renderer.follow(this.sim.ballY, dt);
+    if (this.intro > 0 && !this.sim.started) {
+      if (!this.paused) this.intro -= dt;
+      // İlk 0,6 sn delikte bekler, sonra 1,6 sn'de yumuşakça topa iner
+      const k = 1 - Math.max(0, Math.min(1, this.intro / INTRO_PAN));
+      const e = k * k * (3 - 2 * k);
+      const holeY = this.opts.level.finishHole.y;
+      this.renderer.follow(holeY + (this.sim.ballY - holeY) * e, dt, true);
+    } else {
+      this.intro = 0;
+      this.renderer.follow(this.sim.ballY, dt);
+    }
     this.renderer.update(this.renderState(), dt);
   }
 

@@ -45,12 +45,12 @@ export function mapScreen(app: App): HTMLElement {
     let worldStars = 0;
     for (const l of levels) {
       const r = app.record(l.id);
-      if (r) worldStars += r.timeStars + r.stars.filter(Boolean).length;
+      if (r) worldStars += r.stars.filter(Boolean).length;
     }
     const right = soon
       ? h('div.lock-chip', t('map.soon'))
       : unlocked
-        ? h('div.stars-chip', [svg(icons.star(16)), `${worldStars}/${LEVELS_PER_WORLD * 6}`])
+        ? h('div.stars-chip', [svg(icons.star(16)), `${worldStars}/${LEVELS_PER_WORLD * 3}`])
         : h('div.lock-chip', [svg(icons.lock(14)), t('map.locked', { n: WORLD_UNLOCK[w] })]);
     const card = h(
       `button.world-card${unlocked ? '' : '.locked'}`,

@@ -1,7 +1,7 @@
 // Mağaza (hedef: docs/tasarim/03-gunduz-magaza-kostumler.png, 06-aksam-magaza-toplar.png)
 
 import type { BallType } from '../../config/physics';
-import { BALLS, COSTUMES, COSTUME_CATEGORIES, type CostumeCategory, type CostumeItem } from '../../config/shop';
+import { BALLS, COSTUMES, COSTUME_CATEGORIES, CROWN_LEVELS, type CostumeCategory, type CostumeItem } from '../../config/shop';
 import { formatPoints, t } from '../../i18n';
 import { play } from '../../platform/audio';
 import type { Costume } from '../../save/schema';
@@ -35,11 +35,15 @@ const PARK_BG = `<svg viewBox="0 0 358 240" preserveAspectRatio="xMidYMid slice"
 
 type Tab = 'balls' | 'costumes';
 
+/** Mağaza en son bakılan bölümde açılır (ilk seferde Toplar) */
+let lastTab: Tab = 'balls';
+let lastCat: CostumeCategory = 'hat';
+
 export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cleanup: () => void } {
   const save = app.save;
-  let tab: Tab = 'costumes';
+  let tab: Tab = lastTab;
   let ballSel: BallType = save.data.ball;
-  let cat: CostumeCategory = 'hat';
+  let cat: CostumeCategory = lastCat;
   /** Denenen (satın alınmamış) kostüm parçası */
   let trying: CostumeItem | null = null;
 
@@ -53,6 +57,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
   let preview: ShopPreview | null = null;
 
   const owned = (id: string) => save.data.ownedCostumes.includes(id);
+  const completedLevels = Object.values(save.data.levels).filter((r) => r.completed).length;
 
   const previewCostume = (): Costume => {
     const c: Costume = { ...save.data.costume };
@@ -86,7 +91,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
       tabs.append(
         h(`button${tab === k ? '.on' : ''}`, {
           onclick: () => {
-            tab = k;
+            tab = lastTab = k;
             trying = null;
             ballSel = save.data.ball;
             render();
@@ -112,7 +117,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
           },
         }, [
           h('span.ball-dot', { style: { background: `radial-gradient(circle at 38% 32%, ${g0}, ${g1} 50%, ${g2})` } }),
-          has ? null : h('span.lock', { html: icons.lock(14, '#5B4F8A') }),
+          has ? null : h('span.ball-price', [svg(icons.coin(12)), formatPoints(b.price)]),
         ]),
       );
     }
@@ -154,7 +159,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
   const renderCostumes = () => {
     const cats = h('div.cat-row');
     for (const c of COSTUME_CATEGORIES) {
-      cats.append(h(`button${c === cat ? '.on' : ''}`, { onclick: () => { cat = c; trying = null; render(); } }, t(`shop.cat.${c}`)));
+      cats.append(h(`button${c === cat ? '.on' : ''}`, { onclick: () => { cat = lastCat = c; trying = null; render(); } }, t(`shop.cat.${c}`)));
     }
     const grid = h('div.item-grid');
     const cur = save.data.costume;
@@ -168,8 +173,10 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
       ]),
     );
     for (const it of COSTUMES.filter((c) => c.category === cat)) {
-      const has = owned(it.id);
-      const locked = !!it.lockedText;
+      const crownOpen = it.id === 'hat.crown' && completedLevels >= CROWN_LEVELS;
+      const locked = !!it.lockedText && !crownOpen;
+      // Ücretsiz açılan parça (taç) satın almadan kullanılabilir
+      const has = owned(it.id) || (crownOpen && it.price === 0);
       const on = has && (cat === 'number' ? cur.number !== null : cur[cat] === it.key);
       const name = cat === 'number' ? t('shop.number') : t(`costume.${it.category}.${it.key}`);
       let st: HTMLElement;
@@ -192,7 +199,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
             render();
           },
         }, [
-          h('div.ico', { style: { background: locked ? '#EFEBE5' : ICON_BG[it.tint] ?? '#F4F1EC' }, html: locked ? `${costumeIcon(cat, it.key, it.tint)}` : costumeIcon(cat, it.key, it.tint) }),
+          h('div.ico', { style: { background: locked ? '#EFEBE5' : ICON_BG[it.tint] ?? '#F4F1EC' }, html: costumeIcon(cat, cat === 'number' ? String(cur.number ?? 12) : it.key, it.tint) }),
           h('span.nm', name),
           st,
         ]),

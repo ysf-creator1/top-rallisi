@@ -137,18 +137,6 @@
     }
   ],
   "vacuum": [],
-  "signs": [
-    {
-      "x": 380,
-      "y": 2190,
-      "text": "sign.short"
-    },
-    {
-      "x": 530,
-      "y": 2110,
-      "text": "sign.safe"
-    }
-  ],
   "timeTargets": {
     "gold": 47,
     "silver": 67,

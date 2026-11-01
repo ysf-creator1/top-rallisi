@@ -173,13 +173,16 @@ export class DevPanel {
               return;
             }
             const r = validateLevel(data);
-            if (!r.ok) {
+            // Önizleme sadece var olan dünyaların görünümüyle (1–3)
+            if (r.ok && ![1, 2, 3].includes((data as LevelData).world)) r.errors.push('world 1, 2 ya da 3 olmalı');
+            if (r.errors.length) {
               err.textContent = r.errors.join('\n');
               return;
             }
             err.textContent = t('dev.valid');
             this.panel.classList.add('hidden');
-            void this.app.startLevel(data as LevelData);
+            // Önizlemede puan ve rekor kaydedilmez
+            void this.app.startLevel(data as LevelData, { preview: true });
           },
         }, t('dev.validate')),
       ]),

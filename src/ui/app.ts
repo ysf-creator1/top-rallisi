@@ -6,6 +6,7 @@ import { themeForWorld, trackHex, type ThemeId } from '../config/theme';
 import { parseGhost, type GhostData } from '../game/ghost';
 import { KeyboardInput } from '../game/input/keyboard';
 import { RopeInput } from '../game/input/ropes';
+import { initBackButton } from '../platform/backButton';
 import { LEVELS, getLevel, levelNumber, levelsOfWorld, nextLevel } from '../game/levels';
 import type { LevelData } from '../game/levels/types';
 import { effectiveCheckpoints } from '../game/physics/sim';
@@ -22,7 +23,7 @@ import { SaveStore } from '../save/save';
 import type { LevelRecord, RunRecord } from '../save/schema';
 import { h } from './dom';
 import { Hud } from './hud';
-import { showA2hs, showConfirm, showTiltPermission } from './screens/dialogs';
+import { showA2hs, showConfirm, showTiltPermission, showWorldUnlocked } from './screens/dialogs';
 import { DevPanel } from './screens/dev';
 import { levelEndScreen, type EndInfo } from './screens/levelEnd';
 import { levelsScreen } from './screens/levels';
@@ -66,7 +67,7 @@ export class App {
   private fpsLowWindows = 0;
   fps = 60;
   themeOverride: ThemeId | null = null;
-  private ghostMode = false;
+  ghostMode = false;
   private worldShown = 1;
   private rotateEl: HTMLElement;
   private firstTouchDone = false;
@@ -128,7 +129,30 @@ export class App {
     );
     this.onResize();
     this.showTitle();
+    initBackButton(() => this.handleBack());
     requestAnimationFrame(this.loop);
+  }
+
+  /** Telefonun geri tuşu. false dönerse uygulamadan çıkılır (sadece açılış ekranında). */
+  private handleBack(): boolean {
+    const backBtn = (root: HTMLElement | undefined) => root?.querySelector<HTMLButtonElement>('.round-btn.white');
+    if (this.overlay) {
+      const b = backBtn(this.overlay.el);
+      if (b) b.click();
+      else if (this.screen === 'game' && this.session?.paused && this.overlay.el.querySelector('.pause-list')) this.resumeGame();
+      else if (this.screen === 'game' && this.currentLevel) this.showLevels(this.currentLevel.world);
+      else this.closeOverlay();
+      return true;
+    }
+    if (this.screen === 'title') return false;
+    if (this.screen === 'game') {
+      this.pauseGame();
+      return true;
+    }
+    const b = backBtn(this.current?.el);
+    if (b) b.click();
+    else this.showTitle();
+    return true;
   }
 
   // ---------- Ayarlar ----------
@@ -290,7 +314,8 @@ export class App {
   /** Dünya/etap kilidi */
   totalStars(): number {
     let n = 0;
-    for (const r of Object.values(this.save.data.levels)) n += (r.timeStars ?? 0) + (r.stars ?? []).filter(Boolean).length;
+    // Sadece yoldan toplanan yıldızlar (süre ödülü madalyadır, yıldız sayılmaz)
+    for (const r of Object.values(this.save.data.levels)) n += (r.stars ?? []).filter(Boolean).length;
     return n;
   }
 
@@ -318,7 +343,11 @@ export class App {
   }
 
   /** Etabı başlatır. Eğim modunda gerekirse izin ekranı gösterir. */
-  async startLevel(level: LevelData, opts: { ghost?: boolean } = {}): Promise<void> {
+  /** Geliştirici önizlemesi: puan ve rekor kaydedilmez */
+  private previewMode = false;
+
+  async startLevel(level: LevelData, opts: { ghost?: boolean; preview?: boolean } = {}): Promise<void> {
+    this.previewMode = !!opts.preview;
     requestFullscreen();
     unlockAudio();
     const s = this.save.data.settings;
@@ -354,7 +383,7 @@ export class App {
         onStart: () => this.hud.hideHint(),
         onStar: () => this.hud.bumpStars(),
         onCheckpoint: () => this.hud.flash(t('hud.checkpoint'), 'ok'),
-        onFall: () => this.hud.flash(t('hud.fell'), 'warn'),
+        onFall: () => this.hud.flash(t(this.session && this.session.sim.lastCheckpoint >= 0 ? 'hud.fell' : 'hud.fellStart'), 'warn'),
         onFinish: (r) => this.finishLevel(level, r),
       },
     );
@@ -400,15 +429,23 @@ export class App {
     // Sensör zaten veri gönderiyorsa izin ekranını tekrar gösterme
     if (tiltAvailable()) return true;
     const ok = await new Promise<boolean>((resolve) => {
-      showTiltPermission(this, async () => resolve(await requestTilt()), () => resolve(false), true);
+      showTiltPermission(this, async () => resolve(await this.searchTilt()), () => resolve(false), true);
     });
+    return ok;
+  }
+
+  /** Sensörü ararken "aranıyor" yazısı gösterir (en fazla ~2 sn) */
+  private async searchTilt(): Promise<boolean> {
+    const note = toast(this, t('tilt.searching'), undefined, 0);
+    const ok = await requestTilt();
+    note.remove();
     return ok;
   }
 
   /** Eğim modu seçildiğinde (ayarlar) izin iste */
   async enableTiltMode(): Promise<boolean> {
     const ok = await new Promise<boolean>((resolve) => {
-      showTiltPermission(this, async () => resolve(await requestTilt()), () => resolve(false), false);
+      showTiltPermission(this, async () => resolve(await this.searchTilt()), () => resolve(false), false);
     });
     if (!ok) toast(this, t('tilt.denied'));
     return ok;
@@ -434,27 +471,30 @@ export class App {
   restartLevel(ghost = false): void {
     if (!this.currentLevel) return;
     this.closeOverlay();
-    if (ghost !== this.ghostMode) {
-      void this.startLevel(this.currentLevel, { ghost });
+    // Hayaletle yarışta hayalet her seferinde son rekordan yeniden okunur
+    if (ghost || ghost !== this.ghostMode) {
+      void this.startLevel(this.currentLevel, { ghost, preview: this.previewMode });
       return;
     }
     this.session?.restart();
     this.hud.prepare(this.currentLevel, ghost);
+    this.hud.setVisible(true);
   }
 
   private finishLevel(level: LevelData, r: SessionResult): void {
     if (this.screen !== 'game' || this.currentLevel?.id !== level.id) return;
-    const assist = this.save.data.settings.assist;
+    // Rekor, etap başladığındaki moda yazılır (oyun sırasında değişse bile)
+    const assist = this.session?.opts.assist ?? this.save.data.settings.assist;
     const ball: BallType = this.save.data.ball;
     const prev = this.save.data.levels[level.id];
     const prevBest = assist ? prev?.bestAssist : prev?.best;
     const tStars = timeStars(r.time, level.timeTargets, assist);
     const bonus = timeBonus(r.time, level.timeTargets);
-    const earned = pointsEarned(prev, tStars, r.stars, bonus);
+    const earned = this.previewMode ? 0 : pointsEarned(prev, tStars, r.stars, bonus);
     const isRecord = !prevBest || r.time < prevBest.time - 1e-6;
     const unlockedBefore = PLAYABLE_WORLDS.filter((w) => this.worldUnlocked(w));
 
-    this.save.update((d) => {
+    if (!this.previewMode) this.save.update((d) => {
       const rec: LevelRecord = d.levels[level.id] ?? { completed: false, timeStars: 0, stars: [], bonus: 0 };
       rec.completed = true;
       rec.timeStars = Math.max(rec.timeStars, tStars);
@@ -468,7 +508,7 @@ export class App {
       d.levels[level.id] = rec;
       d.points += earned;
     });
-    if (isRecord) this.save.setGhost(level.id, assist, JSON.stringify(r.ghost));
+    if (isRecord && !this.previewMode) this.save.setGhost(level.id, assist, JSON.stringify(r.ghost));
 
     const info: EndInfo = {
       level,
@@ -487,7 +527,12 @@ export class App {
     this.hud.setVisible(false);
     this.openOverlay(levelEndScreen(this, info));
     const newly = PLAYABLE_WORLDS.filter((w) => this.worldUnlocked(w) && !unlockedBefore.includes(w));
-    for (const w of newly) setTimeout(() => toast(this, t('toast.unlockedWorld', { world: t(`world.${w}`) })), 700);
+    const w = newly[0];
+    if (w)
+      setTimeout(() => {
+        play('record');
+        showWorldUnlocked(this, w, () => this.showLevels(w));
+      }, 900);
   }
 
   nextLevelOf(level: LevelData): LevelData | null {

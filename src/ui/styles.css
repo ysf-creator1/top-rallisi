@@ -249,7 +249,7 @@ body[data-theme='aksam'] .btn-primary {
   border-radius: 18px;
 }
 .segmented button {
-  height: 40px;
+  height: 44px;
   border-radius: 14px;
   font-size: 14px;
   font-weight: 700;
@@ -265,7 +265,7 @@ body[data-theme='aksam'] .btn-primary {
   width: 128px;
 }
 .segmented.small button {
-  height: 32px;
+  height: 40px;
   border-radius: 10px;
   font-size: 13px;
 }
@@ -275,6 +275,7 @@ body[data-theme='aksam'] .btn-primary {
   box-shadow: 0 2px 6px rgba(59, 63, 69, 0.1);
 }
 .toggle {
+  position: relative;
   width: 50px;
   height: 30px;
   border-radius: 15px;
@@ -295,13 +296,19 @@ body[data-theme='aksam'] .btn-primary {
 .toggle.on {
   background: var(--accent);
 }
+/* Görünüş küçük kalır, dokunma alanı 44 px'den büyük */
+.toggle::before {
+  content: '';
+  position: absolute;
+  inset: -9px -6px;
+}
 .toggle.on span {
   transform: translateX(20px);
 }
 input[type='range'] {
   width: 100%;
   accent-color: var(--accent);
-  height: 28px;
+  height: 44px;
 }
 
 /* ---------- Tam ekran menüler (krem) ---------- */
@@ -891,6 +898,54 @@ body[data-theme='aksam'] .end::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.end-nav {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+/* Kısa ekranlar: kart sıkışır, yine sığmazsa kaydırılır */
+.overlay.end {
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+.end::before {
+  position: fixed;
+}
+@media (max-height: 740px) {
+  .overlay.end {
+    gap: 10px;
+    padding-top: calc(44px + var(--safe-top));
+    padding-bottom: calc(16px + var(--safe-bottom));
+  }
+  .end .sheet {
+    margin-top: 18px;
+    gap: 6px;
+    padding-bottom: 14px;
+  }
+  .end-hole {
+    margin-top: -40px;
+    transform: scale(0.7);
+    margin-bottom: -28px;
+  }
+  .end-stars svg {
+    width: 40px;
+    height: 40px;
+  }
+  .end-time {
+    font-size: 44px;
+  }
+  .end-box span:last-child {
+    font-size: 20px;
+  }
+  .end-actions {
+    gap: 8px;
+  }
+  .end-actions .btn-primary,
+  .end-actions .btn-secondary {
+    min-height: 48px;
+    height: 48px;
+  }
+}
 
 /* ---------- Harita ve etap seçimi ---------- */
 .world-card {
@@ -1226,9 +1281,9 @@ body[data-theme='aksam'] .shop-preview {
 }
 .cat-row button {
   flex-shrink: 0;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 18px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
   background: #fff;
   color: var(--muted2);
   font-size: 14px;
@@ -1355,10 +1410,22 @@ body[data-theme='aksam'] .shop-preview {
 .ball-row button.locked .ball-dot {
   opacity: 0.5;
 }
-.ball-row .lock {
+.ball-row .ball-price {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'Fredoka', var(--font-head);
+  font-weight: 600;
+  font-size: 11px;
+  color: #6b4e17;
+  background: #fcf1da;
+  border-radius: 10px;
+  padding: 1px 6px 1px 3px;
+  white-space: nowrap;
 }
 .ball-dot {
   width: 58%;
@@ -1391,7 +1458,7 @@ body[data-theme='aksam'] .shop-preview {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(16px + var(--safe-top));
+  top: calc(84px + var(--safe-top));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1414,6 +1481,18 @@ body[data-theme='aksam'] .shop-preview {
 }
 .toast.simple {
   padding-right: 18px;
+}
+.toast .toast-x {
+  width: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 63, 69, 0.08);
+  color: var(--text);
+}
+.toast.simple .toast-x {
+  margin-right: -10px;
 }
 .toast button {
   height: 34px;
@@ -1554,6 +1633,27 @@ body[data-theme='aksam'] .shop-preview {
   overflow-y: auto;
   touch-action: pan-y;
 }
+.tut-demo {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.tut-demo figcaption {
+  font-family: var(--font-head);
+  font-weight: var(--head-weight);
+  font-size: 15px;
+}
+.tut-demo img {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  aspect-ratio: 390 / 488;
+  border-radius: 20px;
+  background: #e9f1ee;
+  box-shadow: var(--shadow-soft);
+}
 .tut-row {
   display: flex;
   gap: 12px;
@@ -1594,4 +1694,44 @@ body[data-theme='aksam'] .shop-preview {
   background: #fcf1da;
   border-radius: 16px;
   padding: 10px 12px;
+}
+
+/* ---------- Yeni dünya kutlaması ---------- */
+.overlay.unlock .sheet {
+  animation: pop-in 360ms cubic-bezier(0.2, 1.3, 0.3, 1);
+}
+.unlock-badge {
+  width: 84px;
+  height: 84px;
+  border-radius: 42px;
+  background: #e6f3ec;
+  color: #3e7a62;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 10px rgba(140, 207, 180, 0.25);
+}
+.unlock-badge svg {
+  width: 42px;
+  height: 42px;
+}
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  top: -20px;
+  width: 9px;
+  height: 14px;
+  border-radius: 3px;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  to {
+    top: 110%;
+    rotate: 540deg;
+  }
 }

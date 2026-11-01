@@ -19,7 +19,7 @@ export function levelsScreen(app: App, world: number): HTMLElement {
     const collected = rec?.stars.filter(Boolean).length ?? 0;
     const best = rec?.best ?? null;
     const bestA = rec?.bestAssist ?? null;
-    const starsEl = h('div.mini-stars', [0, 1, 2].map((k) => svg(icons.star(16, k < tStars))));
+    const starsEl = h('div.mini-stars', [svg(icons.medal(20, tStars))]);
     const bestEl = h('div.best');
     if (!unlocked) bestEl.append(t('levels.locked'));
     else if (best) bestEl.append(t('levels.best'), h('b', formatTime(best.time)));

@@ -16,7 +16,8 @@ export const STAR_POINTS = 20;
 export const TIME_BONUS_PER_SEC = 2;
 
 /** Dünya kilidi: o dünyayı açmak için gereken toplam yıldız */
-export const WORLD_UNLOCK: Record<number, number> = { 1: 0, 2: 20, 3: 50 };
+/** Dünya kilidi: yoldan toplanan yıldız sayısı (süre madalyaları sayılmaz) */
+export const WORLD_UNLOCK: Record<number, number> = { 1: 0, 2: 10, 3: 25 };
 /** Oynanabilir dünyalar (ilk sürüm) */
 export const PLAYABLE_WORLDS = [1, 2, 3];
 /** Haritada "Yakında" olarak görünen dünyalar */

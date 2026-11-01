@@ -180,28 +180,6 @@
       "strength": 0.55
     }
   ],
-  "signs": [
-    {
-      "x": 620,
-      "y": 3560,
-      "text": "sign.short"
-    },
-    {
-      "x": 480,
-      "y": 3480,
-      "text": "sign.safe"
-    },
-    {
-      "x": 370,
-      "y": 2130,
-      "text": "sign.short"
-    },
-    {
-      "x": 520,
-      "y": 2040,
-      "text": "sign.safe"
-    }
-  ],
   "timeTargets": {
     "gold": 60,
     "silver": 85,

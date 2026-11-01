@@ -35,10 +35,11 @@ const HOLE_SVG = `<svg width="140" height="104" viewBox="0 0 140 104" aria-hidde
 export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
   const L = info.level;
   const stars = h('div.end-stars');
+  // Süre madalyaları: bronz, gümüş, altın (kazanılanlar renkli)
   for (let i = 0; i < 3; i++) {
-    const size = i === 1 ? 64 : 50;
-    const el = svg(icons.star(size, i < info.timeStars));
-    (el.firstElementChild as SVGElement).style.animationDelay = `${150 + i * 140}ms`;
+    const size = [48, 54, 64][i];
+    const el = svg(icons.medal(size, i < info.timeStars ? i + 1 : 0));
+    el.style.animationDelay = `${150 + i * 140}ms`;
     stars.append(el);
   }
 
@@ -51,12 +52,10 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
   } else if (prev) {
     recordRow.append(h('span', t('end.record', { t: formatTime(prev.time) })));
     const gap = info.time - prev.time;
-    recordRow.append(h('span.pill.warn', gap < 0.05 ? t('end.equalRecord') : t('end.toRecord', { t: formatDelta(gap) })));
+    recordRow.append(gap < 0.05 ? h('span.pill.ok', t('end.equalRecord')) : h('span.pill.warn', t('end.toRecord', { t: formatDelta(gap) })));
   }
-  if (info.isRecord || prev) {
-    const ballName = t(`ball.${info.isRecord ? info.ball : prev!.ball}`);
-    recordRow.append(h('span.pill.info', t('end.ballUsed', { ball: ballName })));
-  }
+  // Standart top dışındaki toplarda hangi topla oynandığı yazılır
+  if (info.ball !== 'standard') recordRow.append(h('span.pill.info', t('end.ballUsed', { ball: t(`ball.${info.ball}`) })));
   if (info.assist) recordRow.append(h('span.pill.info', [svg(icons.assist(12)), t('levels.assisted')]));
 
   // Bir sonraki süre yıldızı
@@ -93,6 +92,10 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
       h('div.two', [
         h('button.btn-secondary', { onclick: () => app.restartLevel(false) }, [svg(icons.restart()), t('end.retry')]),
         h('button.btn-secondary', { disabled: !hasGhost, onclick: () => app.restartLevel(true) }, [svg(icons.ghost()), t('end.ghost')]),
+      ]),
+      h('div.end-nav', [
+        h('button.round-btn.glass', { 'aria-label': t('end.home'), onclick: () => app.showTitle() }, [svg(icons.home())]),
+        next ? h('button.round-btn.glass', { 'aria-label': t('end.map'), onclick: () => app.showMap() }, [svg(icons.map())]) : null,
       ]),
     ]),
   ]);

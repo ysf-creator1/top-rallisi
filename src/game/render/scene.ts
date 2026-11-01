@@ -330,7 +330,8 @@ export class GameRenderer {
     const H = this.viewH;
     this.focusMin = H / 2 - 1.9;
     const top = (this.stand?.topY ?? this.levelTop * S + 1.7) + 0.7;
-    this.focusMax = Math.max(this.focusMin, top + H * 0.14 - H / 2);
+    // Üstte göstergeye yer kalsın: bitiş deliği göstergenin altında kalmasın
+    this.focusMax = Math.max(this.focusMin, top + H * 0.2 - H / 2);
   }
 
   /** Kamerayı topa göre hedefler. snap: yumuşatmadan atla. */

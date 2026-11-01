@@ -64,7 +64,8 @@ export class Hud {
     this.hint.classList.toggle('hidden', tilt);
     this.hint.style.opacity = '1';
     this.tiltCard.classList.toggle('hidden', !tilt);
-    this.sideBtn.classList.toggle('hidden', !tilt);
+    // Halat tarafı düğmesi oyun ekranında durmaz (başparmağın altında kalıyordu); duraklatma menüsünde
+    this.sideBtn.classList.add('hidden');
     this.applySide();
     // Rüzgâr etiketleri
     this.windLayer.innerHTML = '';
@@ -82,7 +83,8 @@ export class Hud {
     this.hint.classList.toggle('hidden', tilt);
     this.tiltCard.classList.toggle('hidden', !tilt);
     this.tiltCard.style.opacity = '';
-    this.sideBtn.classList.toggle('hidden', !tilt);
+    // Halat tarafı düğmesi oyun ekranında durmaz (başparmağın altında kalıyordu); duraklatma menüsünde
+    this.sideBtn.classList.add('hidden');
     this.applySide();
   }
 
@@ -94,7 +96,7 @@ export class Hud {
     this.sideBtn.querySelector('.txt')!.textContent = t('hud.ropeSide', { side: t(left ? 'hud.side.left' : 'hud.side.right') });
   }
 
-  private swapSide(): void {
+  swapSide(): void {
     const s = this.app.save.data.settings;
     const next = s.ropeSide === 'left' ? 'right' : 'left';
     this.app.save.update((d) => (d.settings.ropeSide = next));

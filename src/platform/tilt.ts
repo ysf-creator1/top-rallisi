@@ -42,7 +42,7 @@ export async function requestTilt(): Promise<boolean> {
     const t0 = performance.now();
     const check = () => {
       if (hasReading) resolve(true);
-      else if (performance.now() - t0 > 2500) resolve(false);
+      else if (performance.now() - t0 > 1800) resolve(false);
       else setTimeout(check, 60);
     };
     check();

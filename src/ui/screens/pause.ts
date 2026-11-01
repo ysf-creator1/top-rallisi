@@ -12,9 +12,17 @@ export function pauseOverlay(app: App): HTMLElement {
       app.currentLevel ? h('div.end-sub', app.levelLabel(app.currentLevel)) : null,
       h('div.btns.pause-list', [
         h('button.primary', { onclick: () => app.resumeGame() }, [svg(icons.play(20)), t('pause.resume')]),
-        h('button', { onclick: () => app.restartLevel(false) }, [svg(icons.restart()), t('pause.restart')]),
+        h('button', { onclick: () => app.restartLevel(app.ghostMode) }, [svg(icons.restart()), t('pause.restart')]),
+        app.save.data.settings.control === 'tilt'
+          ? h('button', {
+              onclick: () => {
+                app.hud.swapSide();
+                app.showPause();
+              },
+            }, [svg(icons.swap()), t('hud.ropeSide', { side: t(app.save.data.settings.ropeSide === 'left' ? 'hud.side.left' : 'hud.side.right') })])
+          : null,
         h('button', { onclick: () => app.showSettings(true) }, [svg(icons.gear()), t('pause.settings')]),
-        h('button', { onclick: () => app.currentLevel && app.showLevels(app.currentLevel.world) }, [svg(icons.map()), t('pause.map')]),
+        h('button', { onclick: () => app.showMap() }, [svg(icons.map()), t('pause.map')]),
       ]),
     ]),
   ]);

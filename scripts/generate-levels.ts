@@ -24,7 +24,11 @@ const BRONZE = 2.6;
  * Yeni başlayanlar için yol genişliği çarpanı (oyun testinden sonra eklendi):
  * Dünya 1'in 1–3. etapları %50, 4–6. etapları %30, 7–9. etapları %10 daha geniş.
  */
-const WIDTH_BOOST: Record<number, number[]> = { 1: [1.5, 1.5, 1.5, 1.3, 1.3, 1.3, 1.1, 1.1, 1.1, 1] };
+const WIDTH_BOOST: Record<number, number[]> = {
+  1: [1.5, 1.5, 1.5, 1.3, 1.3, 1.3, 1.1, 1.1, 1.1, 1],
+  // Orman'a geçiş yumuşak olsun: ilk etaplar %20, %15, %10 geniş
+  2: [1.2, 1.15, 1.1, 1, 1, 1, 1, 1, 1, 1],
+};
 
 const NAMES: Record<number, string[]> = {
   1: ['İlk Adım', 'Çayır Yolu', 'Papatya Virajı', 'Salıncak', 'Kelebek', 'Yonca', 'Rüzgârgülü', 'Gölgelik', 'Çimen Dansı', 'Büyük Çayır'],
@@ -140,7 +144,6 @@ function buildLevel(p: Plan, seed: number): LevelData {
   // Dünya 3: kısa yol / uzun yol ayrımları. Ana yol (güvenli) geniş kıvrım yapar,
   // kısa yol dar ve dosdoğru gider.
   const branches: Branch[] = [];
-  const signs: { x: number; y: number; text: string }[] = [];
   const nBranch = world === 3 ? (d > 0.5 ? 2 : 1) : 0;
   if (world === 3) {
     const used = new Set<number>();
@@ -172,9 +175,6 @@ function buildLevel(p: Plan, seed: number): LevelData {
         { x: B.x, y: B.y, w: bw },
       ];
       branches.push({ type: 'short', points: pts });
-      signs.push({ x: r10(pts[1].x), y: r10(lerp(A.y, B.y, 0.18)), text: 'sign.short' });
-      const m1 = road[i + 1];
-      signs.push({ x: r10(lerp(A.x, m1.x, 0.5)), y: r10(lerp(A.y, m1.y, 0.4)), text: 'sign.safe' });
     }
   }
 
@@ -217,7 +217,6 @@ function buildLevel(p: Plan, seed: number): LevelData {
     checkpoints,
     stars: [],
     vacuum,
-    ...(signs.length ? { signs } : {}),
     timeTargets: { bronze: 3, silver: 2, gold: 1 },
   };
 

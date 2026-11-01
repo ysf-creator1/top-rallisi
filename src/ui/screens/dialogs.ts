@@ -61,3 +61,30 @@ export function showA2hs(app: App): void {
     () => el.remove(),
   );
 }
+
+const CONFETTI = ['#8CCFB4', '#F2C46D', '#E8907E', '#B3A3E0', '#A8CDE8'];
+
+/** Yeni dünya açılınca büyük kutlama kartı ve konfeti */
+export function showWorldUnlocked(app: App, world: number, onGo: () => void): void {
+  const confetti = h('div.confetti');
+  for (let i = 0; i < 36; i++) {
+    const c = h('i');
+    c.style.left = `${Math.random() * 100}%`;
+    c.style.background = CONFETTI[i % CONFETTI.length];
+    c.style.animationDelay = `${Math.random() * 0.6}s`;
+    c.style.animationDuration = `${1.6 + Math.random() * 1.2}s`;
+    c.style.transform = `rotate(${Math.random() * 360}deg)`;
+    confetti.append(c);
+  }
+  const el = modal(app, [
+    h('div.unlock-badge', [svg(icons.map())]),
+    h('h2', t('unlock.title', { world: t(`world.${world}`) })),
+    h('p', t('unlock.body')),
+    h('div.btns', [
+      h('button.btn-primary', { onclick: () => { el.remove(); onGo(); } }, [svg(icons.play(20)), t('unlock.go')]),
+      h('button.btn-secondary', { onclick: () => el.remove() }, t('unlock.later')),
+    ]),
+  ]);
+  el.classList.add('unlock');
+  el.prepend(confetti);
+}

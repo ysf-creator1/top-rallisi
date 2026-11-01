@@ -7,7 +7,8 @@ import { canvasTexture, makeCanvas } from './common';
 
 const RADIAL = 10;
 const MAX_PTS = 64;
-export const ROPE_R = 0.1;
+/** Halat yarıçapı (oyun testinden sonra ~2 kat kalınlaştırıldı) */
+export const ROPE_R = 0.19;
 
 let ropeTex: THREE.CanvasTexture | null = null;
 
@@ -15,7 +16,7 @@ export function ropeTexture(): THREE.CanvasTexture {
   if (ropeTex) return ropeTex;
   const c = makeCanvas(64, 64);
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#DCC29A';
+  ctx.fillStyle = '#D2B486';
   ctx.fillRect(0, 0, 64, 64);
   // Çapraz bükülmüş lifler: köşegen şeritler (sarmal görünüm)
   ctx.save();
@@ -23,7 +24,7 @@ export function ropeTexture(): THREE.CanvasTexture {
   ctx.rotate(-Math.PI / 4.2);
   for (let i = -6; i < 6; i++) {
     const y = i * 16;
-    ctx.fillStyle = '#BC9C6E';
+    ctx.fillStyle = '#A9885A';
     ctx.fillRect(-64, y, 128, 6);
     ctx.fillStyle = '#F0E2C6';
     ctx.fillRect(-64, y + 9, 128, 2.4);
@@ -124,6 +125,8 @@ export class RopeView {
       g.add(f);
     }
     g.traverse((o) => ((o as THREE.Mesh).isMesh ? (o.castShadow = true) : null));
+    // Düğüm kalın halata uysun diye büyütülür
+    g.scale.setScalar(1.75);
     return g;
   }
 
@@ -209,7 +212,7 @@ export class RopeView {
     (this.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.attributes.normal as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.attributes.uv as THREE.BufferAttribute).needsUpdate = true;
-    this.knot.position.set(x, knotY - 0.12, z);
+    this.knot.position.set(x, knotY - 0.2, z);
     this.knot.rotation.y = s.scroll * 2;
   }
 

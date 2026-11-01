@@ -1,7 +1,9 @@
 // Üstte kısa bildirimler.
 
 import type { App } from './app';
-import { h } from './dom';
+import { h, svg } from './dom';
+import { icons } from './icons';
+import { t } from '../i18n';
 
 let container: HTMLElement | null = null;
 
@@ -13,13 +15,14 @@ function host(app: App): HTMLElement {
   return container;
 }
 
-export function toast(app: App, text: string, action?: { label: string; run: () => void }, ms = 2600): HTMLElement {
+export function toast(app: App, text: string, action?: { label: string; run: () => void }, ms = 2600, closable = false): HTMLElement {
   const el = h(`div.toast.glass${action ? '' : '.simple'}`, [h('span', text)]);
   if (action) {
     el.append(
       h('button', { onclick: () => { action.run(); el.remove(); } }, action.label),
     );
   }
+  if (closable) el.append(h('button.toast-x', { 'aria-label': t('common.close'), onclick: () => el.remove() }, [svg(icons.close())]));
   host(app).append(el);
   if (ms > 0) {
     setTimeout(() => {

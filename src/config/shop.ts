@@ -55,7 +55,7 @@ export const COSTUMES: CostumeItem[] = [
   C('hat', 'straw', 450, '#E9C98A'),
   C('hat', 'helmet', 600, '#F2B7A9'),
   C('hat', 'propeller', 800, '#A8CDE8'),
-  C('hat', 'crown', 0, '#F2C46D', 'shop.unlockW4'),
+  C('hat', 'crown', 0, '#F2C46D', 'shop.unlockCrown'),
   C('glasses', 'round', 200, '#4A4F56'),
   C('glasses', 'sun', 300, '#3B3F45'),
   C('glasses', 'star', 400, '#E8907E'),
@@ -86,3 +86,6 @@ export const JERSEY_COLORS: Record<string, string[]> = {
 export function getCostume(id: string): CostumeItem | undefined {
   return COSTUMES.find((c) => c.id === id);
 }
+
+/** Taç bu kadar etap bitirilince ücretsiz açılır */
+export const CROWN_LEVELS = 20;
