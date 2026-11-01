@@ -20,6 +20,12 @@ const GOLD = 1.2;
 const SILVER = 1.7;
 const BRONZE = 2.6;
 
+/**
+ * Yeni başlayanlar için yol genişliği çarpanı (oyun testinden sonra eklendi):
+ * Dünya 1'in 1–3. etapları %50, 4–6. etapları %30, 7–9. etapları %10 daha geniş.
+ */
+const WIDTH_BOOST: Record<number, number[]> = { 1: [1.5, 1.5, 1.5, 1.3, 1.3, 1.3, 1.1, 1.1, 1.1, 1] };
+
 const NAMES: Record<number, string[]> = {
   1: ['İlk Adım', 'Çayır Yolu', 'Papatya Virajı', 'Salıncak', 'Kelebek', 'Yonca', 'Rüzgârgülü', 'Gölgelik', 'Çimen Dansı', 'Büyük Çayır'],
   2: ['Orman Girişi', 'Çam Yolu', 'Dar Patika', 'Mantar', 'Sincap', 'Yosunlu Taş', 'Baykuş', 'İğne Deliği', 'Kızılçam', 'Orman Kalbi'],
@@ -83,6 +89,8 @@ function buildLevel(p: Plan, seed: number): LevelData {
   // Bitişe yumuşak yaklaşma
   road.push({ x: r10(500 + side * amp * 0.35), y: r10(topY - 160), w: r10(baseW) });
   road.push({ x: r10(500 + side * amp * 0.2), y: r10(topY), w: r10(baseW * 0.95) });
+  const boost = WIDTH_BOOST[world]?.[index] ?? 1;
+  if (boost !== 1) for (const pt of road) pt.w = r10(pt.w * boost);
   const last = road[road.length - 1];
   const finishHole = { x: last.x, y: last.y, r: 46 };
 
