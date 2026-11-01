@@ -1,12 +1,14 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import pkg from './package.json' with { type: 'json' };
 
 // GitHub Pages alt yolu: depo adı değişirse burası da değişmeli.
 const BASE = '/top-rallisi/';
 
 export default defineConfig({
   base: BASE,
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   server: { host: false },
   build: { target: 'es2020', chunkSizeWarningLimit: 1500 },
   plugins: [

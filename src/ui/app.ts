@@ -1,0 +1,484 @@
+// Uygulama: ekranlar, oyun akışı, kayıt ve ödüller.
+
+import { ASSIST, type BallType } from '../config/physics';
+import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
+import { themeForWorld, trackHex, type ThemeId } from '../config/theme';
+import { parseGhost, type GhostData } from '../game/ghost';
+import { KeyboardInput } from '../game/input/keyboard';
+import { RopeInput } from '../game/input/ropes';
+import { LEVELS, getLevel, levelNumber, levelsOfWorld, nextLevel } from '../game/levels';
+import type { LevelData } from '../game/levels/types';
+import { effectiveCheckpoints } from '../game/physics/sim';
+import { Track } from '../game/physics/track';
+import type { Quality } from '../game/render/common';
+import { GameRenderer } from '../game/render/scene';
+import { GameSession, type SessionResult } from '../game/session';
+import { t } from '../i18n';
+import { play, setSoundEnabled, suspendAudio, unlockAudio } from '../platform/audio';
+import { getQueryParam, isIOS, isLandscapePhone, isStandalone, isTouchDevice, requestFullscreen } from '../platform/device';
+import { setHapticsEnabled, vibrate } from '../platform/haptics';
+import { requestTilt, startTilt } from '../platform/tilt';
+import { SaveStore } from '../save/save';
+import type { LevelRecord, RunRecord } from '../save/schema';
+import { h } from './dom';
+import { Hud } from './hud';
+import { showA2hs, showConfirm, showTiltPermission } from './screens/dialogs';
+import { DevPanel } from './screens/dev';
+import { levelEndScreen, type EndInfo } from './screens/levelEnd';
+import { levelsScreen } from './screens/levels';
+import { mapScreen } from './screens/map';
+import { pauseOverlay } from './screens/pause';
+import { settingsScreen } from './screens/settings';
+import { shopScreen } from './screens/shop';
+import { titleScreen } from './screens/title';
+import { toast } from './toast';
+
+export type ScreenName = 'title' | 'map' | 'levels' | 'game' | 'shop' | 'settings';
+
+interface Mounted {
+  el: HTMLElement;
+  cleanup?: () => void;
+}
+
+export class App {
+  readonly save = new SaveStore();
+  readonly root: HTMLElement;
+  readonly stage: HTMLElement;
+  readonly screens: HTMLElement;
+  readonly overlays: HTMLElement;
+  readonly renderer: GameRenderer;
+  readonly ropes: RopeInput;
+  readonly keys = new KeyboardInput();
+  readonly hud: Hud;
+  readonly dev: DevPanel | null;
+  session: GameSession | null = null;
+  screen: ScreenName = 'title';
+  currentLevel: LevelData | null = null;
+  private current: Mounted | null = null;
+  private overlay: Mounted | null = null;
+  private lastFrame = performance.now();
+  private render3D = true;
+  private fpsAcc = 0;
+  private fpsFrames = 0;
+  private fpsLowWindows = 0;
+  fps = 60;
+  themeOverride: ThemeId | null = null;
+  private ghostMode = false;
+  private worldShown = 1;
+  private rotateEl: HTMLElement;
+  private firstTouchDone = false;
+
+  constructor(root: HTMLElement) {
+    this.root = root;
+    const sky = h('div.sky', [h('div.sun')]);
+    this.stage = h('div.stage');
+    const inputLayer = h('div.input-layer');
+    this.stage.append(inputLayer);
+    this.screens = h('div');
+    this.overlays = h('div');
+    this.rotateEl = h('div.rotate', [h('b', t('rotate.title')), h('span', t('rotate.body'))]);
+    root.append(sky, this.stage, this.screens, this.overlays, this.rotateEl);
+
+    const q = (getQueryParam('q') as Quality | null) ?? (isTouchDevice() ? 'medium' : 'high');
+    this.renderer = new GameRenderer(this.stage, ['high', 'medium', 'low'].includes(q) ? q : 'medium');
+    this.stage.append(inputLayer);
+
+    this.ropes = new RopeInput({
+      enabled: () => (this.session && this.screen === 'game' && !this.session.paused ? this.session.ropesEnabled : [false, false]),
+      ropeX: () => this.renderer.ropeScreenPositions,
+      onGrab: () => {
+        vibrate(8);
+        play('grab');
+      },
+    });
+    this.ropes.attach(inputLayer);
+    this.hud = new Hud(this);
+    this.stage.append(this.hud.el);
+
+    const th = getQueryParam('theme');
+    if (th === 'aksam' || th === 'gunduz') this.themeOverride = th;
+
+    this.applySettings();
+    this.dev = getQueryParam('dev') === '1' ? new DevPanel(this) : null;
+    if (this.dev) root.append(this.dev.el);
+
+    window.addEventListener('resize', this.onResize);
+    window.addEventListener('orientationchange', this.onResize);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.pauseGame();
+        suspendAudio();
+      } else if (this.firstTouchDone) unlockAudio();
+    });
+    // Çift dokunmayla yakınlaştırma ve uzun basma menüsü olmasın
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    window.addEventListener(
+      'pointerdown',
+      () => {
+        if (!this.firstTouchDone) {
+          this.firstTouchDone = true;
+          unlockAudio();
+        }
+      },
+      { capture: true },
+    );
+    this.onResize();
+    this.showTitle();
+    requestAnimationFrame(this.loop);
+  }
+
+  // ---------- Ayarlar ----------
+
+  applySettings(): void {
+    const s = this.save.data.settings;
+    setSoundEnabled(s.sound);
+    setHapticsEnabled(s.vibration);
+    this.renderer.setTrackColor(trackHex(s.trackColor));
+    if (s.control === 'tilt') startTilt();
+  }
+
+  get theme(): ThemeId {
+    if (this.themeOverride) return this.themeOverride;
+    return themeForWorld(this.currentLevel?.world ?? this.worldShown);
+  }
+
+  // ---------- Döngü ----------
+
+  private loop = (now: number): void => {
+    const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
+    this.lastFrame = now;
+    if (this.render3D && this.session) {
+      this.session.frame(dt);
+      this.renderer.render();
+      this.hud.update();
+    }
+    this.measureFps(dt);
+    this.dev?.update(dt);
+    requestAnimationFrame(this.loop);
+  };
+
+  private measureFps(dt: number): void {
+    this.fpsAcc += dt;
+    this.fpsFrames++;
+    if (this.fpsAcc >= 2) {
+      this.fps = this.fpsFrames / this.fpsAcc;
+      this.fpsAcc = 0;
+      this.fpsFrames = 0;
+      // Kalite otomatik düşer (tarif 2.3)
+      if (this.render3D && this.screen === 'game' && !document.hidden && this.fps < 48) {
+        this.fpsLowWindows++;
+        if (this.fpsLowWindows >= 2) {
+          this.fpsLowWindows = 0;
+          const q = this.renderer.quality;
+          if (q === 'high') this.setQuality('medium');
+          else if (q === 'medium') this.setQuality('low');
+        }
+      } else this.fpsLowWindows = 0;
+    }
+  }
+
+  setQuality(q: Quality): void {
+    this.renderer.setQuality(q);
+    if (this.currentLevel && this.session) this.loadLevelVisuals(this.currentLevel, this.ghostMode);
+  }
+
+  private onResize = (): void => {
+    this.renderer.resize(window.innerWidth, window.innerHeight);
+    const land = isLandscapePhone();
+    this.rotateEl.classList.toggle('show', land);
+    if (land) this.pauseGame();
+  };
+
+  // ---------- Ekran yönetimi ----------
+
+  private mount(name: ScreenName, m: Mounted, show3D: boolean): void {
+    this.current?.cleanup?.();
+    this.current?.el.remove();
+    this.closeOverlay();
+    this.current = m;
+    this.screen = name;
+    this.screens.append(m.el);
+    this.render3D = show3D;
+    this.stage.style.visibility = show3D ? 'visible' : 'hidden';
+    this.hud.setVisible(name === 'game');
+    this.renderer.setTheme(this.theme);
+  }
+
+  openOverlay(el: HTMLElement, cleanup?: () => void): void {
+    this.closeOverlay();
+    this.overlay = { el, cleanup };
+    this.overlays.append(el);
+  }
+
+  closeOverlay(): void {
+    this.overlay?.cleanup?.();
+    this.overlay?.el.remove();
+    this.overlay = null;
+  }
+
+  showTitle(): void {
+    this.currentLevel = null;
+    this.startAttract();
+    this.mount('title', { el: titleScreen(this) }, true);
+  }
+
+  private startAttract(): void {
+    const lvl = getLevel('w1-01') ?? LEVELS[0];
+    this.worldShown = 1;
+    this.loadLevelVisuals(lvl, false);
+    const s = this.save.data.settings;
+    this.session = new GameSession(
+      { level: lvl, ball: this.save.data.ball, assist: false, ghost: null, control: 'ropes', ropeSide: s.ropeSide, sensitivity: s.sensitivity, tiltSensitivity: s.tiltSensitivity, tiltOffset: 0, attract: true },
+      this.renderer,
+      this.ropes,
+      this.keys,
+    );
+  }
+
+  showMap(): void {
+    this.session = null;
+    this.mount('map', { el: mapScreen(this) }, false);
+  }
+
+  showLevels(world: number): void {
+    this.session = null;
+    this.worldShown = world;
+    this.mount('levels', { el: levelsScreen(this, world) }, false);
+  }
+
+  showShop(): void {
+    const back = this.screen;
+    this.session = null;
+    const m = shopScreen(this, () => (back === 'map' ? this.showMap() : this.showTitle()));
+    this.mount('shop', m, false);
+  }
+
+  showSettings(fromPause = false): void {
+    if (fromPause) {
+      // Oyun duraklatılmış kalır; ayarlar üstte açılır
+      const m = settingsScreen(this, () => {
+        this.closeOverlay();
+        this.applySettings();
+        this.showPause();
+      });
+      m.el.style.zIndex = '30';
+      this.openOverlay(m.el, m.cleanup);
+      return;
+    }
+    const back = this.screen;
+    this.session = null;
+    const m = settingsScreen(this, () => {
+      this.applySettings();
+      if (back === 'map') this.showMap();
+      else this.showTitle();
+    });
+    this.mount('settings', m, false);
+  }
+
+  // ---------- Oyun ----------
+
+  /** Dünya/etap kilidi */
+  totalStars(): number {
+    let n = 0;
+    for (const r of Object.values(this.save.data.levels)) n += (r.timeStars ?? 0) + (r.stars ?? []).filter(Boolean).length;
+    return n;
+  }
+
+  worldUnlocked(world: number): boolean {
+    if (this.dev?.unlockAll) return true;
+    if (!PLAYABLE_WORLDS.includes(world)) return false;
+    return this.totalStars() >= (WORLD_UNLOCK[world] ?? Infinity);
+  }
+
+  levelUnlocked(level: LevelData): boolean {
+    if (this.dev?.unlockAll) return true;
+    if (!this.worldUnlocked(level.world)) return false;
+    const list = levelsOfWorld(level.world);
+    const i = list.findIndex((l) => l.id === level.id);
+    if (i <= 0) return true;
+    return !!this.save.data.levels[list[i - 1].id]?.completed;
+  }
+
+  record(id: string): LevelRecord | undefined {
+    return this.save.data.levels[id];
+  }
+
+  ghostFor(id: string, assist: boolean): GhostData | null {
+    return parseGhost(this.save.getGhost(id, assist));
+  }
+
+  /** Etabı başlatır. Eğim modunda gerekirse izin ekranı gösterir. */
+  async startLevel(level: LevelData, opts: { ghost?: boolean } = {}): Promise<void> {
+    requestFullscreen();
+    unlockAudio();
+    const s = this.save.data.settings;
+    if (s.control === 'tilt') {
+      const ok = await this.ensureTilt();
+      if (!ok) {
+        this.save.update((d) => (d.settings.control = 'ropes'));
+        toast(this, t('tilt.denied'));
+      }
+    }
+    this.currentLevel = level;
+    this.worldShown = level.world;
+    const assist = s.assist;
+    const ghost = opts.ghost ? this.ghostFor(level.id, assist) : null;
+    this.ghostMode = !!ghost;
+    this.loadLevelVisuals(level, !!ghost);
+    this.session = new GameSession(
+      {
+        level,
+        ball: this.save.data.ball,
+        assist,
+        ghost,
+        control: this.save.data.settings.control,
+        ropeSide: s.ropeSide,
+        sensitivity: s.sensitivity,
+        tiltSensitivity: s.tiltSensitivity,
+        tiltOffset: s.tiltOffset,
+      },
+      this.renderer,
+      this.ropes,
+      this.keys,
+      {
+        onStart: () => this.hud.hideHint(),
+        onStar: () => this.hud.bumpStars(),
+        onCheckpoint: () => this.hud.flash(t('hud.checkpoint'), 'ok'),
+        onFall: () => this.hud.flash(t('hud.fell'), 'warn'),
+        onFinish: (r) => this.finishLevel(level, r),
+      },
+    );
+    this.mount('game', { el: h('div') }, true);
+    this.hud.prepare(level, !!ghost);
+  }
+
+  private loadLevelVisuals(level: LevelData, ghost: boolean): void {
+    const s = this.save.data.settings;
+    this.renderer.setTheme(this.theme);
+    this.renderer.setLevel({
+      level,
+      track: new Track(level),
+      checkpoints: effectiveCheckpoints(level, s.assist),
+      trackColor: trackHex(s.trackColor),
+      ball: this.save.data.ball,
+      costume: this.save.data.costume,
+      ghost,
+    });
+    this.renderer.levelProps?.resetStars((level.stars ?? []).map(() => false));
+  }
+
+  private async ensureTilt(): Promise<boolean> {
+    const ok = await new Promise<boolean>((resolve) => {
+      showTiltPermission(this, async () => resolve(await requestTilt()), () => resolve(false), true);
+    });
+    return ok;
+  }
+
+  /** Eğim modu seçildiğinde (ayarlar) izin iste */
+  async enableTiltMode(): Promise<boolean> {
+    const ok = await new Promise<boolean>((resolve) => {
+      showTiltPermission(this, async () => resolve(await requestTilt()), () => resolve(false), false);
+    });
+    if (!ok) toast(this, t('tilt.denied'));
+    return ok;
+  }
+
+  pauseGame(): void {
+    if (this.screen !== 'game' || !this.session || this.session.paused) return;
+    if (this.session.sim.phase === 'finished' || this.session.sim.phase === 'finishing') return;
+    this.session.paused = true;
+    this.ropes.releaseAll();
+    this.showPause();
+  }
+
+  showPause(): void {
+    this.openOverlay(pauseOverlay(this));
+  }
+
+  resumeGame(): void {
+    this.closeOverlay();
+    if (this.session) this.session.paused = false;
+  }
+
+  restartLevel(ghost = false): void {
+    if (!this.currentLevel) return;
+    this.closeOverlay();
+    if (ghost !== this.ghostMode) {
+      void this.startLevel(this.currentLevel, { ghost });
+      return;
+    }
+    this.session?.restart();
+    this.hud.prepare(this.currentLevel, ghost);
+  }
+
+  private finishLevel(level: LevelData, r: SessionResult): void {
+    if (this.screen !== 'game' || this.currentLevel?.id !== level.id) return;
+    const assist = this.save.data.settings.assist;
+    const ball: BallType = this.save.data.ball;
+    const prev = this.save.data.levels[level.id];
+    const prevBest = assist ? prev?.bestAssist : prev?.best;
+    const tStars = timeStars(r.time, level.timeTargets, assist);
+    const bonus = timeBonus(r.time, level.timeTargets);
+    const earned = pointsEarned(prev, tStars, r.stars, bonus);
+    const isRecord = !prevBest || r.time < prevBest.time - 1e-6;
+    const unlockedBefore = PLAYABLE_WORLDS.filter((w) => this.worldUnlocked(w));
+
+    this.save.update((d) => {
+      const rec: LevelRecord = d.levels[level.id] ?? { completed: false, timeStars: 0, stars: [], bonus: 0 };
+      rec.completed = true;
+      rec.timeStars = Math.max(rec.timeStars, tStars);
+      rec.stars = r.stars.map((s, i) => s || !!rec.stars[i]);
+      rec.bonus = Math.max(rec.bonus, bonus);
+      const run: RunRecord = { time: r.time, ball, falls: r.falls };
+      if (isRecord) {
+        if (assist) rec.bestAssist = run;
+        else rec.best = run;
+      }
+      d.levels[level.id] = rec;
+      d.points += earned;
+    });
+    if (isRecord) this.save.setGhost(level.id, assist, JSON.stringify(r.ghost));
+
+    const info: EndInfo = {
+      level,
+      time: r.time,
+      falls: r.falls,
+      timeStars: tStars,
+      collected: r.stars.filter(Boolean).length,
+      earned,
+      prevBest: prevBest ?? null,
+      isRecord,
+      assist,
+      ball,
+      maxTimeStars: assist ? ASSIST.maxTimeStars : 3,
+    };
+    if (isRecord && prevBest) play('record');
+    this.hud.setVisible(false);
+    this.openOverlay(levelEndScreen(this, info));
+    const newly = PLAYABLE_WORLDS.filter((w) => this.worldUnlocked(w) && !unlockedBefore.includes(w));
+    for (const w of newly) setTimeout(() => toast(this, t('toast.unlockedWorld', { world: t(`world.${w}`) })), 700);
+  }
+
+  nextLevelOf(level: LevelData): LevelData | null {
+    const n = nextLevel(level);
+    if (!n || !this.levelUnlocked(n)) return null;
+    return n;
+  }
+
+  levelLabel(level: LevelData): string {
+    return t('hud.level', { world: t(`world.short.${level.world}`), n: levelNumber(level) });
+  }
+
+  confirm(text: string, yes: string, onYes: () => void): void {
+    showConfirm(this, text, yes, onYes);
+  }
+
+  maybeShowA2hs(): void {
+    if (!isIOS() || isStandalone() || this.save.data.flags.a2hsShown) return;
+    this.save.update((d) => (d.flags.a2hsShown = true));
+    showA2hs(this);
+  }
+
+  levelsPerWorld = LEVELS_PER_WORLD;
+}

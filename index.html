@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#C7E2EE" />
+    <meta name="description" content="Halatları çek, topu parkurda tut, bitiş deliğine ulaştır." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Top Rallisi" />
+    <link rel="icon" href="/top-rallisi/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/top-rallisi/icons/apple-touch-icon.png" />
+    <title>Top Rallisi</title>
+    <style>
+      html,body{margin:0;height:100%;background:#F4EEE1}
+      #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#C7E2EE,#E4EEEA 45%,#F4EEE1 72%);transition:opacity .3s}
+      #boot div{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#fff,#F2F4F6 50%,#C9D1D8);box-shadow:0 10px 20px rgba(59,63,69,.15);animation:b 0.9s ease-in-out infinite alternate}
+      @keyframes b{to{transform:translateY(-18px)}}
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="boot"><div></div></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

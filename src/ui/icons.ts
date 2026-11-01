@@ -1,0 +1,87 @@
+// Yumuşak köşeli, tek kalınlıkta çizgi ikonlar (emoji yok).
+
+const line = (d: string, size = 22, color = 'currentColor', w = 2.2) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+
+export const STAR_PATH = 'M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z';
+
+export const icons = {
+  pause: () =>
+    '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.6" height="12" rx="1.8" fill="currentColor"/><rect x="9.4" y="2" width="3.6" height="12" rx="1.8" fill="currentColor"/></svg>',
+  back: () => line('<path d="M14.5 6l-6 6 6 6"/>', 22),
+  star: (size = 18, filled = true) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}" fill="${filled ? '#F2C46D' : '#ECE7DF'}" stroke="${filled ? '#DDA94B' : '#D6CFC4'}" stroke-width="${size > 30 ? 0.8 : 1}" stroke-linejoin="round"/></svg>`,
+  coin: (size = 18) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#F2C46D" stroke="#DDA94B" stroke-width="1.4"/><circle cx="12" cy="12" r="5.2" fill="none" stroke="#DDA94B" stroke-width="1.4"/></svg>`,
+  lock: (size = 16, color = '#6A7078') =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="3" fill="${color}"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+  gear: () =>
+    line(
+      '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/>',
+    ),
+  bag: () => line('<path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
+  play: (size = 22) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>`,
+  restart: () => line('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>'),
+  map: () => line('<path d="M9 4.5L3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/>'),
+  ghost: () => line('<path d="M6 20V11a6 6 0 0 1 12 0v9l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z"/><circle cx="9.8" cy="11" r=".6" fill="currentColor"/><circle cx="14.2" cy="11" r=".6" fill="currentColor"/>'),
+  swap: () => line('<path d="M4 8h14l-3-3M20 16H6l3 3"/>'),
+  phone: () =>
+    `<svg width="44" height="36" viewBox="0 0 44 36" aria-hidden="true"><path d="M6 24 Q22 34 38 24" fill="none" stroke="#B3A3E0" stroke-width="2.2" stroke-linecap="round"/><g transform="rotate(14 22 17)"><rect x="15" y="4" width="14" height="24" rx="3.5" fill="#FBF7F0" stroke="#3B3F45" stroke-width="2.2"/></g><circle cx="33" cy="12" r="3" fill="#B3A3E0"/></svg>`,
+  rope: () =>
+    `<svg width="28" height="36" viewBox="0 0 28 36" aria-hidden="true"><rect x="11" y="1" width="6" height="24" rx="3" fill="#DCC29A"/><path d="M11 6l6 -3M11 11l6-3M11 16l6-3M11 21l6-3" stroke="#BC9C6E" stroke-width="1.6"/><ellipse cx="14" cy="28" rx="6.5" ry="6" fill="#DCC29A" stroke="#A98B5F"/><path d="M14 18v-8" stroke="#3B3F45" stroke-width="2" stroke-linecap="round"/><path d="M11 13l3 3 3-3" fill="none" stroke="#3B3F45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 2)"/></svg>`,
+  flag: () => line('<path d="M6 21V4"/><path d="M6 4.5h11l-2.5 3.5L17 11.5H6"/>'),
+  check: () => line('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  minus: () => line('<path d="M6 12h12"/>'),
+  plus: () => line('<path d="M12 6v12M6 12h12"/>'),
+  close: () => line('<path d="M7 7l10 10M17 7L7 17"/>'),
+  share: () => line('<path d="M12 15V4M8 7.5L12 3.5l4 4"/><path d="M6 11v8.5h12V11"/>'),
+  assist: (size = 12) => line('<path d="M12 3.5l7 3v5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9v-5z"/>', size),
+  arrowLeft: (size = 14) => line('<path d="M19 12H5M10 7l-5 5 5 5"/>', size),
+  arrowRight: (size = 14) => line('<path d="M5 12h14M14 7l5 5-5 5"/>', size),
+};
+
+/** Mağaza kostüm ikonları (küçük renkli çizimler) */
+export function costumeIcon(category: string, key: string, tint: string): string {
+  const s = (inner: string) => `<svg width="44" height="34" viewBox="0 0 44 34" aria-hidden="true">${inner}</svg>`;
+  switch (category) {
+    case 'color':
+      return s(`<circle cx="22" cy="17" r="13" fill="${tint}"/><circle cx="17" cy="12" r="3.5" fill="#fff" opacity=".7"/>`);
+    case 'sticker': {
+      const paths: Record<string, string> = {
+        star: `<path d="${STAR_PATH}" transform="translate(10 5)" fill="${tint}" stroke="#DDA94B"/>`,
+        heart: `<path d="M22 28C10 20 12 9 22 13 32 9 34 20 22 28z" fill="${tint}"/>`,
+        bolt: `<path d="M25 4L14 19h7l-3 11 12-16h-7z" fill="${tint}"/>`,
+        leaf: `<path d="M12 28C10 14 22 6 34 6 34 20 26 28 12 28z" fill="${tint}"/><path d="M13 27L28 12" stroke="#fff" stroke-width="1.6"/>`,
+      };
+      return s(paths[key] ?? '');
+    }
+    case 'hat': {
+      const p: Record<string, string> = {
+        cap: `<circle cx="16" cy="8" r="2.5" fill="${tint}"/><path d="M6 24 Q16 10 27 22 Z" fill="${tint}"/><path d="M24 20h12a3 3 0 0 1-3 4H24z" fill="#6FBF9E"/>`,
+        beanie: `<path d="M10 26a12 12 0 0 1 24 0z" fill="${tint}"/><rect x="9" y="24" width="26" height="6" rx="3" fill="#9C8AD0"/><circle cx="22" cy="8" r="4" fill="#F6F1E8"/>`,
+        straw: `<ellipse cx="22" cy="24" rx="19" ry="5" fill="#E2BC77"/><path d="M14 23a8 9 0 0 1 16 0z" fill="${tint}"/><rect x="14" y="20" width="16" height="3" fill="#E8907E"/>`,
+        helmet: `<path d="M8 26a14 14 0 0 1 28 0z" fill="${tint}"/><rect x="20" y="10" width="4" height="16" rx="2" fill="#FBF7F0"/><rect x="6" y="24" width="32" height="4" rx="2" fill="#D88E7E"/>`,
+        propeller: `<path d="M12 28a10 10 0 0 1 20 0z" fill="${tint}"/><rect x="21" y="9" width="2" height="10" fill="#9AA2AA"/><ellipse cx="15" cy="8" rx="7" ry="2.2" fill="#E8907E"/><ellipse cx="29" cy="8" rx="7" ry="2.2" fill="#F2C46D"/>`,
+        crown: `<path d="M8 26V12l7 6 7-9 7 9 7-6v14z" fill="#E4DED3"/>`,
+      };
+      return s(p[key] ?? '');
+    }
+    case 'glasses': {
+      if (key === 'star')
+        return s(
+          `<path d="${STAR_PATH}" transform="translate(2 5) scale(.75)" fill="${tint}"/><path d="${STAR_PATH}" transform="translate(24 5) scale(.75)" fill="${tint}"/><path d="M19 14h6" stroke="${tint}" stroke-width="2"/>`,
+        );
+      const fill = key === 'sun' ? '#3B3F45' : 'none';
+      return s(`<circle cx="13" cy="17" r="7" fill="${fill}" stroke="${tint}" stroke-width="2.6"/><circle cx="31" cy="17" r="7" fill="${fill}" stroke="${tint}" stroke-width="2.6"/><path d="M20 16q2-2 4 0" fill="none" stroke="${tint}" stroke-width="2.4"/>`);
+    }
+    case 'jersey': {
+      const cols = key === 'rainbow' ? ['#E8907E', '#F2C46D', '#8CCFB4', '#A8CDE8', '#B3A3E0'] : [tint];
+      const bands = cols.map((c, i) => `<rect x="9" y="${cols.length > 1 ? 13 + i * 2.4 : 15}" width="26" height="${cols.length > 1 ? 2.4 : 3.2}" fill="${c}"/>`).join('');
+      const second = cols.length > 1 ? '' : `<rect x="10" y="21" width="24" height="2.6" fill="${tint}"/>`;
+      return s(`<circle cx="22" cy="17" r="13" fill="#FBFBFC" stroke="#DCE1E5"/><clipPath id="jc${key}"><circle cx="22" cy="17" r="13"/></clipPath><g clip-path="url(#jc${key})">${bands}${second}</g>`);
+    }
+    case 'number':
+      return s(`<circle cx="22" cy="17" r="12" fill="#FBF7F0" stroke="#E8907E" stroke-width="2.4"/><text x="22" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="13" fill="#3B3F45">12</text>`);
+  }
+  return s('');
+}

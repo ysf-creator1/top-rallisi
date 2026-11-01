@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LevelData } from '../src/game/levels/types';
 
-const DIR = join(__dirname, '..', 'src', 'levels');
+const DIR = join(import.meta.dirname, '..', 'src', 'levels');
 
 export function allLevels(): LevelData[] {
   return readdirSync(DIR)
