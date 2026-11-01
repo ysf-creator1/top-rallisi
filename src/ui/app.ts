@@ -31,7 +31,10 @@ import { pauseOverlay } from './screens/pause';
 import { settingsScreen } from './screens/settings';
 import { shopScreen } from './screens/shop';
 import { titleScreen } from './screens/title';
+import { tutorialOverlay } from './screens/tutorial';
 import { toast } from './toast';
+
+const FIRST_LEVEL = 'w1-01';
 
 export type ScreenName = 'title' | 'map' | 'levels' | 'game' | 'shop' | 'settings';
 
@@ -254,7 +257,7 @@ export class App {
     this.mount('shop', m, false);
   }
 
-  showSettings(fromPause = false): void {
+  showSettings(fromPause = false, afterBack?: () => void): void {
     if (fromPause) {
       // Oyun duraklatılmış kalır; ayarlar üstte açılır
       const m = settingsScreen(this, () => {
@@ -265,7 +268,8 @@ export class App {
           this.session.applySettings(this.save.data.settings);
           this.hud.refreshControls();
         }
-        this.showPause();
+        if (afterBack) afterBack();
+        else this.showPause();
       });
       m.el.style.zIndex = '30';
       this.openOverlay(m.el, m.cleanup);
@@ -356,6 +360,25 @@ export class App {
     );
     this.mount('game', { el: h('div') }, true);
     this.hud.prepare(level, !!ghost);
+    // Birinci etapta nasıl oynandığını anlat (diğer etaplarda değil)
+    if (level.id === FIRST_LEVEL && !ghost) this.showTutorial();
+  }
+
+  private showTutorial(): void {
+    if (!this.session) return;
+    this.session.paused = true;
+    const start = () => {
+      this.closeOverlay();
+      if (this.session) this.session.paused = false;
+    };
+    this.openOverlay(
+      tutorialOverlay(this, start, () =>
+        this.showSettings(true, () => {
+          // Ayarlardan dönünce kart yeniden görünür, oyuncu Başla'ya basar
+          this.showTutorial();
+        }),
+      ),
+    );
   }
 
   private loadLevelVisuals(level: LevelData, ghost: boolean): void {

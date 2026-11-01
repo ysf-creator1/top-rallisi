@@ -1,12 +1,10 @@
 {
   "app.title": "Top Rallisi",
   "app.tagline": "Halatları çek, topu parkurda tut.",
-
   "title.play": "Oyna",
   "title.shop": "Mağaza",
   "title.settings": "Ayarlar",
   "title.points": "Puan",
-
   "map.title": "Dünyalar",
   "map.totalStars": "Toplam yıldız",
   "map.locked": "{n} yıldızla açılır",
@@ -24,12 +22,10 @@
   "world.feature.2": "Daralan yollar",
   "world.feature.3": "Kısa yol ve uzun yol ayrımları",
   "world.feature.4": "Rüzgâr bölgeleri",
-
   "levels.best": "En iyi",
   "levels.notPlayed": "Oynanmadı",
   "levels.locked": "Kilitli",
   "levels.assisted": "yardımlı",
-
   "hud.level": "{world} · ETAP {n}",
   "hud.pause": "Duraklat",
   "hud.ghostAhead": "−{t} sn",
@@ -45,13 +41,11 @@
   "hud.calibrate": "Telefonu düz tut",
   "hud.ghost": "Hayalet",
   "hud.wind": "rüzgâr",
-
   "pause.title": "Duraklatıldı",
   "pause.resume": "Devam",
   "pause.restart": "Yeniden başlat",
   "pause.settings": "Ayarlar",
   "pause.map": "Haritaya dön",
-
   "end.title": "Etap tamamlandı",
   "end.record": "Rekor {t}",
   "end.newRecord": "Yeni rekor! −{t} sn",
@@ -70,7 +64,6 @@
   "end.map": "Haritaya dön",
   "end.ballUsed": "{ball} ile",
   "end.falls": "{n} kez düştün",
-
   "shop.title": "Mağaza",
   "shop.balls": "Toplar",
   "shop.costumes": "Kostümler",
@@ -94,7 +87,6 @@
   "shop.cat.glasses": "Gözlük",
   "shop.cat.jersey": "Forma",
   "shop.cat.number": "Numara",
-
   "ball.standard": "Standart top",
   "ball.heavy": "Ağır top",
   "ball.light": "Hafif top",
@@ -105,7 +97,6 @@
   "ball.desc.light": "Çabuk hızlanır, rüzgârda kolayca savrulur.",
   "ball.desc.rubber": "Sürtünmesi yüksek, durdurması kolay. Sekmeyi sever.",
   "ball.desc.ice": "Neredeyse sürtünmesiz kayar. Zor ama çok hızlı.",
-
   "costume.color.default": "Kendi rengi",
   "costume.color.coral": "Mercan",
   "costume.color.sky": "Gök",
@@ -128,7 +119,6 @@
   "costume.jersey.mint": "Nane şerit",
   "costume.jersey.navy": "Lacivert şerit",
   "costume.jersey.rainbow": "Gökkuşağı",
-
   "settings.title": "Ayarlar",
   "settings.preview": "Önizleme",
   "settings.trackColor": "Parkur rengi",
@@ -160,7 +150,6 @@
   "settings.cancel": "Vazgeç",
   "settings.resetDone": "İlerleme sıfırlandı",
   "settings.version": "Sürüm {v}",
-
   "track.black": "Siyah",
   "track.anthracite": "Antrasit",
   "track.navy": "Gece mavisi",
@@ -169,30 +158,23 @@
   "track.walnut": "Ceviz",
   "track.lavender": "Lavanta",
   "track.mint": "Mint",
-
   "tilt.title": "Eğim sensörü",
   "tilt.body": "Eğme modunda çubuğu telefonu sağa sola eğerek yönlendirirsin. Bunun için telefonun eğim sensörüne izin vermen gerekiyor.",
   "tilt.allow": "Eğim sensörüne izin ver",
   "tilt.cancel": "İki halatla oyna",
   "tilt.denied": "Eğim sensörü kullanılamıyor, iki halat moduna geçildi",
-
   "sign.short": "Kısa yol",
   "sign.safe": "Güvenli yol",
-
   "rotate.title": "Telefonu dik tut",
   "rotate.body": "Top Rallisi dikey oynanır.",
-
   "a2hs.title": "Tam ekran oyna",
   "a2hs.body": "Paylaş menüsünden \"Ana Ekrana Ekle\" ile oyunu uygulama gibi, tam ekran açabilirsin.",
   "a2hs.ok": "Tamam",
-
   "pwa.update": "Yeni sürüm hazır",
   "pwa.reload": "Yenile",
   "pwa.offline": "Oyun artık internetsiz de açılır",
-
   "toast.unlockedWorld": "{world} açıldı!",
   "toast.bought": "{item} senin!",
-
   "dev.title": "Geliştirici",
   "dev.fps": "FPS",
   "dev.quality": "Kalite",
@@ -206,8 +188,19 @@
   "dev.unlockAll": "Bütün etapları aç",
   "dev.addPoints": "+5000 puan",
   "dev.close": "Kapat",
-
   "common.back": "Geri",
   "common.close": "Kapat",
-  "common.sec": "sn"
+  "common.sec": "sn",
+  "tutorial.title": "Nasıl oynanır?",
+  "tutorial.goal.title": "Amaç",
+  "tutorial.goal.body": "Beyaz topu siyah yolun üzerinde tut ve en üstteki deliğe götür. Top yoldan çıkarsa düşer, son bayraktan devam edersin.",
+  "tutorial.ropes.title": "İki halatla",
+  "tutorial.ropes.body": "Ekranın iki kenarındaki halatları aşağı çek. Sol halat çubuğun sol ucunu, sağ halat sağ ucunu kaldırır. Halatı istediğin yerinden tutabilirsin.",
+  "tutorial.tilt.title": "Telefonu eğerek",
+  "tutorial.tilt.body": "Telefonu sağa sola eğince top o yöne yuvarlanır. Kenardaki tek halatı çekerek çubuğu yükseltirsin.",
+  "tutorial.settings.title": "Ayarlar",
+  "tutorial.settings.body": "Bu iki yoldan hangisiyle oynayacağını, tek halatın hangi tarafta olacağını ve hassasiyeti Ayarlar'dan değiştirebilirsin.",
+  "tutorial.tip": "Ne kadar hızlı bitirirsen o kadar çok yıldız kazanırsın. Yoldaki 3 yıldızı da toplamayı dene!",
+  "tutorial.start": "Başla",
+  "tutorial.settings": "Ayarları aç"
 }

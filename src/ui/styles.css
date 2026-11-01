@@ -1534,3 +1534,53 @@ body[data-theme='aksam'] .shop-preview {
     transition-duration: 1ms !important;
   }
 }
+
+/* ---------- Nasıl oynanır ---------- */
+.sheet.tut {
+  align-items: stretch;
+  gap: 10px;
+  max-height: 100%;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+.tut-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #fff;
+  border-radius: 20px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-soft);
+}
+.tut-ico {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tut-row b {
+  display: block;
+  font-family: var(--font-head);
+  font-weight: var(--head-weight);
+  font-size: 16px;
+}
+.sheet .tut-row p {
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sheet .tut-tip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
+  font-size: 13.5px;
+  color: #6b4e17;
+  background: #fcf1da;
+  border-radius: 16px;
+  padding: 10px 12px;
+}
