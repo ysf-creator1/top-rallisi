@@ -274,6 +274,21 @@ export class GameSession {
     }
   }
 
+  /** Oyun sırasında değişen ayarları uygular (duraklatma → Ayarlar). */
+  applySettings(s: { control: ControlMode; ropeSide: 'left' | 'right'; sensitivity: number; tiltSensitivity: number }): void {
+    const switchedToTilt = s.control === 'tilt' && this.opts.control !== 'tilt';
+    this.opts.control = s.control;
+    this.opts.ropeSide = s.ropeSide;
+    this.opts.sensitivity = s.sensitivity;
+    this.opts.tiltSensitivity = s.tiltSensitivity;
+    this.ropes.releaseAll();
+    if (switchedToTilt && !this.opts.attract) {
+      this.calibrating = 1.0;
+      this.calibSum = 0;
+      this.calibN = 0;
+    }
+  }
+
   setAutopilot(on: boolean): void {
     this.autopilot = on ? new Autopilot() : this.opts.attract ? this.autopilot : null;
   }

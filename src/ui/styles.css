@@ -22,8 +22,11 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --font-head: 'Fredoka', 'Nunito', sans-serif;
+  /* Fredoka'da ğ, ş, İ yok: başlıklar Nunito, Fredoka sadece rakamlarda */
+  --font-head: 'Nunito', sans-serif;
   --font-body: 'Nunito', sans-serif;
+  --font-num: 'Fredoka', 'Nunito', sans-serif;
+  --head-weight: 800;
 }
 
 body[data-theme='aksam'] {
@@ -31,6 +34,7 @@ body[data-theme='aksam'] {
   --accent-text: #36334a;
   --font-head: 'Outfit', 'Nunito', sans-serif;
   --font-body: 'Outfit', 'Nunito', sans-serif;
+  --head-weight: 600;
   --text: #36334a;
 }
 
@@ -159,7 +163,7 @@ button:focus-visible {
   gap: 6px;
   padding: 0 14px;
   font-family: var(--font-head);
-  font-weight: 600;
+  font-weight: var(--head-weight);
   font-size: 18px;
 }
 .coin-chip {
@@ -172,7 +176,7 @@ button:focus-visible {
   gap: 6px;
   font-family: var(--font-head);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   color: #6b4e17;
   font-variant-numeric: tabular-nums;
 }
@@ -184,7 +188,7 @@ button:focus-visible {
   box-shadow: 0 10px 24px rgba(76, 140, 112, 0.28);
   font-family: var(--font-head);
   font-size: 21px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   width: 100%;
   display: flex;
   align-items: center;
@@ -201,7 +205,7 @@ body[data-theme='aksam'] .btn-primary {
   box-shadow: 0 8px 20px rgba(59, 63, 69, 0.1);
   font-family: var(--font-head);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,7 +218,7 @@ body[data-theme='aksam'] .btn-primary {
   color: #fff;
   font-family: var(--font-head);
   font-size: 20px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   width: 100%;
   display: flex;
   align-items: center;
@@ -351,7 +355,7 @@ body[data-theme='aksam'] .screen {
 .header .title {
   font-family: var(--font-head);
   font-size: 26px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   flex: 1;
 }
 .header.center .title {
@@ -360,7 +364,7 @@ body[data-theme='aksam'] .screen {
 .section-title {
   font-family: var(--font-head);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
 }
 .card {
   background: #fff;
@@ -437,7 +441,7 @@ body[data-theme='aksam'] .screen {
 }
 .logo h1 {
   margin: 0;
-  font-family: var(--font-head);
+  font-family: 'Fredoka', var(--font-head);
   font-weight: 700;
   font-size: 46px;
   line-height: 1;
@@ -593,7 +597,7 @@ body[data-theme='aksam'] .screen {
   display: block;
   font-family: var(--font-head);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
 }
 .tilt-card span {
   font-size: 14px;
@@ -641,7 +645,7 @@ body[data-theme='aksam'] .screen {
   border-radius: 24px;
   font-family: var(--font-head);
   font-size: 20px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -693,7 +697,7 @@ body[data-theme='aksam'] .screen {
   margin: 0;
   font-family: var(--font-head);
   font-size: 28px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   line-height: 1.1;
   text-align: center;
 }
@@ -723,7 +727,7 @@ body[data-theme='aksam'] .screen {
   padding: 0 18px;
   font-family: var(--font-head);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   width: 100%;
 }
 .pause-list button.primary {
@@ -914,7 +918,7 @@ body[data-theme='aksam'] .end::before {
   display: block;
   font-family: var(--font-head);
   font-size: 20px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
 }
 .world-info small {
   display: block;
@@ -952,7 +956,7 @@ body[data-theme='aksam'] .end::before {
   background: #fcf1da;
   color: #6b4e17;
   font-family: var(--font-head);
-  font-weight: 600;
+  font-weight: var(--head-weight);
   font-size: 16px;
   display: flex;
   align-items: center;
@@ -1002,7 +1006,7 @@ body[data-theme='aksam'] .end::before {
   color: #3e7a62;
   font-family: var(--font-head);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1172,7 +1176,7 @@ body[data-theme='aksam'] .shop-preview {
   background: rgba(251, 248, 242, 0.9);
   font-family: var(--font-head);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   display: flex;
   align-items: center;
 }
@@ -1189,7 +1193,7 @@ body[data-theme='aksam'] .shop-preview {
   border-radius: 20px;
   font-family: var(--font-head);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   color: var(--muted2);
 }
 .tabs button.on {
@@ -1286,7 +1290,7 @@ body[data-theme='aksam'] .shop-preview {
 .ball-title {
   font-family: var(--font-head);
   font-size: 30px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
   margin: 0;
   line-height: 1.1;
 }
@@ -1424,7 +1428,7 @@ body[data-theme='aksam'] .shop-preview {
 .rotate b {
   font-family: var(--font-head);
   font-size: 26px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
 }
 .rotate span {
   font-size: 15px;
@@ -1476,7 +1480,7 @@ body[data-theme='aksam'] .shop-preview {
   margin: 4px 0 0;
   font-family: var(--font-head);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: var(--head-weight);
 }
 .dev-panel label {
   display: grid;

@@ -76,6 +76,16 @@ export class Hud {
     this.toastEl.classList.remove('show');
   }
 
+  /** Kontrol türü oyun sırasında değişince göstergeleri yeniler */
+  refreshControls(): void {
+    const tilt = this.app.save.data.settings.control === 'tilt';
+    this.hint.classList.toggle('hidden', tilt);
+    this.tiltCard.classList.toggle('hidden', !tilt);
+    this.tiltCard.style.opacity = '';
+    this.sideBtn.classList.toggle('hidden', !tilt);
+    this.applySide();
+  }
+
   private applySide(): void {
     const left = this.app.save.data.settings.ropeSide === 'left';
     // Kart ve buton halatın karşı tarafında dursun

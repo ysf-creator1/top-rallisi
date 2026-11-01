@@ -260,6 +260,11 @@ export class App {
       const m = settingsScreen(this, () => {
         this.closeOverlay();
         this.applySettings();
+        // Değişen kontrol ayarları süren etaba da geçsin
+        if (this.session && this.currentLevel) {
+          this.session.applySettings(this.save.data.settings);
+          this.hud.refreshControls();
+        }
         this.showPause();
       });
       m.el.style.zIndex = '30';
