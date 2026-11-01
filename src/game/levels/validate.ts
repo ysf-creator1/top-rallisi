@@ -107,7 +107,7 @@ export function validateLevel(raw: unknown): ValidationResult {
     if (i > 0 && c <= cps[i - 1]) errors.push('checkpoints artan sırada olmalı');
     if (isNum(c) && crossings(track.main, c) !== 1) errors.push(`checkpoints[${i}]: yol bu yüksekliği bir kez geçmeli`);
   });
-  if (cps.length > 3) errors.push('en fazla 3 kontrol noktası');
+  if (cps.length > 4) errors.push('en fazla 4 kontrol noktası');
 
   const stars = L.stars ?? [];
   if (stars.length !== 3) errors.push('3 yıldız olmalı');

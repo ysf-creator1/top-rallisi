@@ -19,7 +19,7 @@ import { BarView, POST_X, applyStandTheme, buildStand, type StandParts } from '.
 import { TrackSurface } from './track';
 
 const FOV = 35;
-const VIEW_W = 14.4;
+const VIEW_W = 13.3;
 const MIN_VIEW_H = 24;
 const PITCH = 0.035;
 const BG_PARALLAX = 0.12;
@@ -450,7 +450,7 @@ export class GameRenderer {
       const px = i === 0 ? edgePx : this.width - edgePx;
       this.screenToStand(px, midY, z, v);
       let x = v.x;
-      const minX = POST_X + 0.55;
+      const minX = POST_X + 0.45;
       const maxX = POST_X + 1.7;
       x = sx * Math.min(maxX, Math.max(minX, Math.abs(x)));
       this.ropeLocalX[i] = x;

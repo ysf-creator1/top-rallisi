@@ -4,7 +4,6 @@ import { TRACK_COLORS, trackHex, trackPalette } from '../../config/theme';
 import { t } from '../../i18n';
 import { hapticsSupported } from '../../platform/haptics';
 import { isIOS } from '../../platform/device';
-import { readTiltDeg, startTilt, tiltAvailable } from '../../platform/tilt';
 import type { App } from '../app';
 import { h, svg } from '../dom';
 import { icons } from '../icons';
@@ -118,21 +117,6 @@ export function settingsScreen(app: App, onBack: () => void): { el: HTMLElement;
     if (s().control !== 'tilt') return;
     tiltRows.append(
       slider(s().tiltSensitivity, (v) => save.update((d) => (d.settings.tiltSensitivity = v)), t('settings.tiltSensitivity')),
-      h('div.row', [
-        h('span.label', [t('settings.calibrate'), h('small', t('settings.calibrateSub'))]),
-        h('button.plain-btn', {
-          onclick: () => {
-            startTilt();
-            setTimeout(() => {
-              if (tiltAvailable()) {
-                const deg = readTiltDeg();
-                save.update((d) => (d.settings.tiltOffset = deg));
-                toast(app, t('settings.calibrated'));
-              } else toast(app, t('tilt.denied'));
-            }, 200);
-          },
-        }, t('settings.calibrate')),
-      ]),
     );
   };
   const control = segmented(

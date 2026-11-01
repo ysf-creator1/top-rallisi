@@ -8,7 +8,7 @@ import type { SceneTheme } from '../../config/theme';
 import { sagDepth } from '../physics/bar';
 import { BAR_Z, GROUND_Y, LEAN, S, matte } from './common';
 
-export const POST_X = 5.6;
+export const POST_X = 5.42;
 const POST_W = 0.44;
 
 export interface StandParts {

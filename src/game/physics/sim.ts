@@ -4,7 +4,7 @@
 import { ASSIST, BALL_TRAITS, WORLD_VACUUM, physics, type BallType } from '../../config/physics';
 import type { LevelData } from '../levels/types';
 import { barFrame, barPoint, equilibriumTilt, localAngle, type BarFrame } from './bar';
-import { Track, type NearestResult } from './track';
+import { Track, type NearestResult, type Polyline } from './track';
 
 export type SimPhase = 'playing' | 'falling' | 'finishing' | 'finished';
 
@@ -25,16 +25,39 @@ export interface SimOptions {
 export const FALL_DURATION = 0.85;
 export const FINISH_DURATION = 0.75;
 
-/** Yardım modu için kontrol noktalarını tamamlar (en az 3, eşit aralıklı). */
+/** Yardım modu için kontrol noktalarını tamamlar (en az 3, yolun tek geçtiği yüksekliklerde). */
 export function effectiveCheckpoints(level: LevelData, assist: boolean): number[] {
   const base = [...(level.checkpoints ?? [])].sort((a, b) => a - b);
   if (!assist || base.length >= ASSIST.minCheckpoints) return base;
   const top = level.finishHole.y;
   const start = level.road[0].y;
+  const main = new Track({ ...level, branches: [] }).main;
+  const once = (y: number) => crossingsOf(main, y) === 1 && crossingsOf(main, y - 60) === 1 && crossingsOf(main, y + 60) === 1;
   const n = ASSIST.minCheckpoints + 1;
   const out: number[] = [];
-  for (let i = 1; i < n; i++) out.push(start + ((top - start) * i) / n);
-  return out;
+  for (let i = 1; i < n; i++) {
+    const want = start + ((top - start) * i) / n;
+    for (let off = 0; off < top; off += 10) {
+      const y = [want + off, want - off].find((c) => c > start + 100 && c < top - 100 && once(c) && !out.includes(c));
+      if (y !== undefined) {
+        out.push(y);
+        break;
+      }
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/** Ana yol verilen yüksekliği kaç kez geçiyor? */
+export function crossingsOf(line: Polyline, y: number): number {
+  const { ys, count } = line;
+  let n = 0;
+  for (let i = 0; i < count - 1; i++) {
+    const y0 = ys[i];
+    const y1 = ys[i + 1];
+    if ((y0 < y && y1 >= y) || (y0 > y && y1 <= y)) n++;
+  }
+  return n;
 }
 
 export class Simulation {
@@ -70,6 +93,7 @@ export class Simulation {
   finishTime = 0;
   falls = 0;
   lastCheckpoint = -1;
+  private prevBallY = -Infinity;
   readonly starsCollected: boolean[];
   events: SimEvent[] = [];
 
@@ -372,11 +396,17 @@ export class Simulation {
     }
 
     // Kontrol noktaları
-    for (let i = this.lastCheckpoint + 1; i < this.checkpoints.length; i++) {
-      if (by >= this.checkpoints[i]) {
+    // Sayılması için top çizgiyi ana yolun üzerinden geçmeli: çatalda öbür yoldan
+    // giden oyuncu bu noktayı atlar ve düşerse daha aşağıdaki noktadan başlar.
+    const prevY = this.prevBallY;
+    this.prevBallY = by;
+    for (let i = this.checkpoints.length - 1; i > this.lastCheckpoint; i--) {
+      const cy = this.checkpoints[i];
+      if (prevY < cy && by >= cy && Math.abs(bx - this.track.centerXAt(cy)) <= this.track.widthAt(cy) / 2 + physics.ballRadius) {
         this.lastCheckpoint = i;
         this.events.push({ type: 'checkpoint', index: i });
-      } else break;
+        break;
+      }
     }
   }
 
@@ -384,6 +414,7 @@ export class Simulation {
     const y = this.respawnHeights[this.lastCheckpoint + 1];
     const x = this.track.centerXAt(y);
     this.placeBall(x, y);
+    this.prevBallY = this.ballY;
     this.setPhase('playing');
     this.events.push({ type: 'respawn' });
   }

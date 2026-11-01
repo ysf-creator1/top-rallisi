@@ -58,7 +58,8 @@ describe('hayalet kaydı', () => {
     }
     const player = new GhostPlayer(rec.finish(sim, level.id, 'standard'), 1000, sim.depth, physics.ballRadius);
     const mid = heights[Math.floor(heights.length / 2)];
-    expect(Math.abs(player.delta(mid.t, mid.h)!)).toBeLessThan(0.2);
+    // Yatık yollarda yükseklik yavaş arttığı için fark birkaç kare oynayabilir
+    expect(Math.abs(player.delta(mid.t, mid.h)!)).toBeLessThan(0.35);
     expect(player.delta(mid.t + 1.5, mid.h)!).toBeGreaterThan(1.2);
     expect(player.delta(mid.t - 1.5, mid.h)!).toBeLessThan(-1.2);
   });

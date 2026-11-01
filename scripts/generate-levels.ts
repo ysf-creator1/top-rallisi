@@ -56,137 +56,188 @@ interface Plan {
   index: number;
   /** 0..1 dünya içindeki zorluk */
   d: number;
+  /** 0..1 bütün etaplar boyunca ilerleme (uzunluk buna göre artar) */
+  prog: number;
 }
 
-function buildLevel(p: Plan, seed: number): LevelData {
+/** Hedef bot süresi (sn): ilk etap ~15, son etap ~60 (dikkatli oyuncu için ~2 dk) */
+export const targetTime = (prog: number) => 15 + 45 * Math.pow(prog, 1.1);
+/** Kenar boşluğu: yolun kenarı tahtanın ucuna bu kadar yaklaşır */
+const MARGIN = 28;
+
+/** Uniform Catmull-Rom (track.ts ile aynı) */
+function cr(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+}
+
+/** j ile j+1 arasındaki eğrinin tahtanın ortasından en uzak kenarı */
+function reach(road: RoadPoint[], j: number): number {
+  const n = road.length;
+  const p0 = road[Math.max(0, j - 1)];
+  const p1 = road[j];
+  const p2 = road[j + 1];
+  const p3 = road[Math.min(n - 1, j + 2)];
+  let m = 0;
+  for (let k = 0; k <= 20; k++) {
+    const x = cr(p0.x, p1.x, p2.x, p3.x, k / 20);
+    m = Math.max(m, Math.abs(x - 500) + Math.max(p1.w, p2.w) / 2);
+  }
+  return m;
+}
+
+type TravKind = 'steep' | 'flat' | 'down';
+
+function buildLevel(p: Plan, seed: number, lenScale: number): LevelData {
   const R = rng(seed);
-  const { world, index, d } = p;
+  const { world, index, d, prog } = p;
   const id = `w${world}-${String(index + 1).padStart(2, '0')}`;
+  const boost = WIDTH_BOOST[world]?.[index] ?? 1;
 
   // Dünya ve zorluğa göre ölçüler
-  const height = r10(world === 1 ? lerp(2800, 4800, d) : world === 2 ? lerp(3800, 5600, d) : lerp(4400, 6200, d));
-  const baseW = world === 1 ? lerp(250, 190, d) : world === 2 ? lerp(210, 175, d) : lerp(200, 175, d);
-  const narrowW = world === 2 ? lerp(150, 115, d) : world === 3 ? lerp(140, 115, d) : baseW;
-  const stepY = world === 1 ? lerp(620, 520, d) : lerp(560, 480, d);
-  const boost = WIDTH_BOOST[world]?.[index] ?? 1;
-  // Virajlar tahtanın kenarına kadar gider (ilk etaplarda biraz daha az)
-  const ampFrac = world === 1 ? lerp(0.6, 1, d) : lerp(0.85, 1, d);
-  const maxAmp = (w: number) => 500 - (w * boost) / 2 - 45;
-  // Aşağı dönen kıvrım sayısı
-  const wantSwitchbacks = world === 1 ? (index >= 6 ? 1 : 0) : world === 2 ? (d < 0.5 ? 1 : 2) : 1;
+  const baseW = (world === 1 ? lerp(250, 190, d) : world === 2 ? lerp(210, 175, d) : lerp(200, 175, d)) * boost;
+  const narrowW = (world === 2 ? lerp(150, 115, d) : world === 3 ? lerp(140, 115, d) : baseW / boost) * boost;
+  // Yolun hedef uzunluğu (bot hızı ~150 birim/sn varsayımıyla; süre tutmazsa ölçek düzeltilir)
+  const wantLen = targetTime(prog) * 150 * lenScale;
+  // Yatık çıkış ve iniş olasılıkları
+  const pFlat = world === 1 && index < 3 ? 0.4 : lerp(0.5, 0.65, prog);
+  const pDown = world === 1 ? (index < 3 ? 0 : index < 6 ? 0.18 : 0.25) : 0.25;
+  const maxDown = world === 1 ? (index < 3 ? 0 : index < 6 ? 1 : 2) : world === 2 ? 3 : 3;
+
+  const pick = (prev: TravKind | null, downs: number): TravKind => {
+    if (prev !== null && prev !== 'down' && downs < maxDown && R() < pDown) return 'down';
+    return R() < pFlat ? 'flat' : 'steep';
+  };
+  const rise = (k: TravKind) => (k === 'steep' ? lerp(300, 400, R()) : k === 'flat' ? lerp(170, 260, R()) : -lerp(110, 190, R()));
 
   const road: RoadPoint[] = [{ x: 500, y: 0, w: r10(baseW + 30) }, { x: 500, y: 260, w: r10(baseW + 20) }];
-  /** Her noktanın türü: düz viraj ya da aşağı dönen kıvrım */
-  const kinds: ('start' | 'swing' | 'switch')[] = ['start', 'start'];
-  let y = 260;
-  let side = R() < 0.5 ? -1 : 1;
-  const topY = height - 140;
+  /** Kenardaki U dönüşleri: alt ve üst nokta indeksleri */
+  const turns: { bot: number; top: number; side: number }[] = [];
+  /** Her geçişin türü (turns[i]'ye varan geçiş) */
+  const travKinds: TravKind[] = [];
   const narrowSpots: number[] = [];
+  let side = R() < 0.5 ? -1 : 1;
+  let y = 260;
+  let kind: TravKind = 'steep';
+  let r = lerp(260, 340, R());
+  let downs = 0;
+  let len = 260;
+  let px = 500;
   let k = 0;
-  let switchbacks = 0;
-  const totalSwings = Math.max(1, Math.floor((topY - 560) / stepY));
-  // Kıvrımlar etabın içine dağılsın
-  // Dünya 3'te kıvrım başta olur ki geri kalan düz virajlarda kısa yola yer kalsın
-  const sbAt = world === 3 ? [1] : Array.from({ length: wantSwitchbacks }, (_, i) => Math.floor(((i + 1) * totalSwings) / (wantSwitchbacks + 1)));
-  while (y + stepY * 0.7 < topY - 300) {
-    const prev = road[road.length - 1];
-    const sbW = baseW;
-    const A = maxAmp(sbW);
-    const canSwitch = switchbacks < wantSwitchbacks && sbAt.includes(k) && kinds[kinds.length - 1] === 'swing' && y + 760 < topY - 300 && A >= sbW * boost + 60;
-    if (canSwitch) {
-      // Kemer: yukarı çık, karşıya doğru aşağı in, en uçta tekrar yukarı kıvrıl
-      const sp = Math.sign(prev.x - 500) || 1;
-      const x1 = 500 + sp * A;
-      const x2 = 500;
-      const x3 = 500 - sp * A;
-      const y0 = prev.y;
-      prev.x = r10(x1);
-      const pts: [number, number][] = [
-        [x1 - sp * 40, y0 + 260],
-        [(x1 + x2) / 2, y0 + 430],
-        [x2, y0 + 270],
-        [(x2 + x3) / 2, y0 + 110],
-        [x3 + sp * 30, y0 + 320],
-        [x3 + sp * 60, y0 + 620],
-      ];
-      for (const [px, py] of pts) {
-        road.push({ x: r10(px), y: r10(py), w: r10(sbW) });
-        kinds.push('switch');
-      }
-      y = y0 + 620;
-      side = sp;
-      switchbacks++;
-      k++;
-      continue;
-    }
-    y += stepY * lerp(0.8, 1.15, R());
-    let w = baseW * lerp(0.92, 1.05, R());
-    // Dünya 2: bazı noktalarda yol daralır
+  while (len + 1000 < wantLen || turns.length < 2) {
+    const w = baseW;
+    const X = 500 + side * (500 - MARGIN - w / 2);
+    // Geçişin ortası (dar geçit olabilir)
+    let mw = baseW * lerp(0.92, 1.05, R());
     if (world >= 2 && k % 2 === 1 && R() < lerp(0.5, 0.8, d)) {
-      w = narrowW;
+      mw = narrowW;
       narrowSpots.push(road.length);
     }
-    const a = maxAmp(w) * ampFrac * lerp(0.8, 1, R());
-    const x = clamp(500 + side * a, (w * boost) / 2 + 45, W - (w * boost) / 2 - 45);
-    road.push({ x: r10(x), y: r10(y), w: r10(w) });
-    kinds.push('swing');
+    road.push({ x: r10((px + X) / 2), y: r10(y + r / 2), w: r10(mw) });
+    const yb = y + r;
+    len += Math.hypot(X - px, r);
+    // Bir sonraki geçişi şimdiden seç: U'nun yüksekliği iki geçişe göre ayarlanır
+    const next = pick(kind, downs + (kind === 'down' ? 1 : 0));
+    const rn = rise(next);
+    const Emin = w + 90;
+    let E = Emin + lerp(0, 70, R());
+    // Karşı kenarda iki geçiş arasında yer kalsın
+    E = Math.max(E, Emin + 60 - r - rn);
+    road.push({ x: r10(X), y: r10(yb), w: r10(w) });
+    road.push({ x: r10(X), y: r10(yb + E), w: r10(w) });
+    turns.push({ bot: road.length - 2, top: road.length - 1, side });
+    travKinds.push(kind);
+    if (kind === 'down') downs++;
+    len += E;
+    y = yb + E;
+    px = X;
     side = -side;
+    kind = next;
+    r = rn;
     k++;
+    if (k > 60) break;
   }
-  const amp = maxAmp(baseW) * ampFrac;
-  // Bitişe yumuşak yaklaşma
-  road.push({ x: r10(500 + side * amp * 0.35), y: r10(topY - 160), w: r10(baseW) });
-  road.push({ x: r10(500 + side * amp * 0.2), y: r10(topY), w: r10(baseW * 0.95) });
-  if (boost !== 1) for (const pt of road) pt.w = r10(pt.w * boost);
+  // Bitiş: son U'dan karşıya doğru, kalan uzunluk kadar giden yatık bir yol
+  const remain = Math.max(250, wantLen - len);
+  const dir = Math.sign(500 - px);
+  const dx = clamp(remain * 0.8, 220, 700);
+  const fRise = clamp(remain * 0.35, 220, 400);
+  road.push({ x: r10(px + dir * dx * 0.5), y: r10(y + fRise * 0.55), w: r10(baseW) });
+  road.push({ x: r10(px + dir * dx), y: r10(y + fRise), w: r10(baseW * 0.95) });
+  // U dönüşlerini kenara tam oturt (eğri dışarı taşmasın, içeride de kalmasın)
+  for (let it = 0; it < 6; it++) {
+    for (const tn of turns) {
+      const ex = reach(road, tn.bot) - (500 - MARGIN);
+      for (const j of [tn.bot, tn.top]) road[j].x = r10(road[j].x - Math.sign(road[j].x - 500) * ex);
+    }
+  }
+  for (const tn of turns) {
+    for (const j of [tn.bot, tn.top]) road[j].x = clamp(road[j].x, road[j].w / 2 + 10, W - road[j].w / 2 - 10);
+  }
   const last = road[road.length - 1];
+  const height = r10(last.y + 140);
+  const topY = last.y;
   const finishHole = { x: last.x, y: last.y, r: 46 };
 
-  // Dünya 3: kısa yol / uzun yol ayrımları. Ana yol (güvenli) geniş kıvrım yapar,
-  // kısa yol dar ve dosdoğru gider.
+  // Dünya 3: kısa yol. Ana yol karşı kenara gidip geri döner; kısa yol aynı kenardan
+  // dar bir şeritle dosdoğru çıkar. Uzun yolun karşı kenarında bir kontrol noktası olur.
   const branches: Branch[] = [];
+  const forkCps: number[] = [];
+  const forkRanges: [number, number][] = [];
   const nBranch = world === 3 ? (d > 0.5 ? 2 : 1) : 0;
   if (world === 3) {
-    const used = new Set<number>();
+    const used: number[] = [];
     for (let b = 0; b < nBranch; b++) {
-      // Ayrım: art arda iki köşe (i → i+3) arasında
-      const candidates: number[] = [];
-      for (let i = 2; i + 3 < road.length - 2; i++) {
-        const plain = [0, 1, 2, 3].every((o) => kinds[i + o] === 'swing');
-        if (plain && ![...used].some((u) => Math.abs(u - i) < 3)) candidates.push(i);
+      const cands: number[] = [];
+      for (let t = 0; t + 2 < turns.length - 1; t++) {
+        // Ayrımın içindeki iki geçiş yukarı çıkmalı
+        if (travKinds[t + 1] === 'down' || travKinds[t + 2] === 'down') continue;
+        if (used.some((u) => Math.abs(u - t) < 3)) continue;
+        cands.push(t);
       }
-      if (!candidates.length) break;
-      const i = candidates[Math.floor(R() * candidates.length)];
-      used.add(i);
-      const A = road[i];
-      const B = road[i + 3];
-      // Ana yolu genişlet ve kıvrımı büyüt (uzun yol)
-      for (let j = i + 1; j <= i + 2; j++) {
-        const m = road[j];
-        const dir = m.x >= 500 ? 1 : -1;
-        m.w = r10(Math.max(m.w, baseW + 10));
-        m.x = r10(clamp(500 + dir * (amp + 40), m.w / 2 + 45, W - m.w / 2 - 45));
-      }
+      if (!cands.length) break;
+      const t = cands[Math.floor(R() * cands.length)];
+      used.push(t);
+      const A = road[turns[t].top];
+      const B = road[turns[t + 2].bot];
+      const inward = -Math.sign(A.x - 500);
       const bw = r10(narrowW);
-      const midX = (A.x + B.x) / 2;
-      const pts: RoadPoint[] = [
-        { x: A.x, y: A.y, w: bw },
-        { x: r10(lerp(A.x, midX, 0.6)), y: r10(lerp(A.y, B.y, 0.3)), w: bw },
-        { x: r10(lerp(B.x, midX, 0.6)), y: r10(lerp(A.y, B.y, 0.7)), w: bw },
-        { x: B.x, y: B.y, w: bw },
-      ];
-      branches.push({ type: 'short', points: pts });
+      branches.push({
+        type: 'short',
+        points: [
+          { x: A.x, y: A.y, w: bw },
+          { x: r10(A.x + inward * 30), y: r10(lerp(A.y, B.y, 0.33)), w: bw },
+          { x: r10(A.x + inward * 30), y: r10(lerp(A.y, B.y, 0.67)), w: bw },
+          { x: B.x, y: B.y, w: bw },
+        ],
+      });
+      forkRanges.push([A.y, B.y]);
+      // Uzun yolun karşı kenardaki U dönüşünün ortası
+      const U = turns[t + 1];
+      forkCps.push(r10((road[U.bot].y + road[U.top].y) / 2));
     }
   }
 
-  // Kontrol noktaları: 1–3
-  const nCp = height < 3600 ? 1 : height < 5000 ? 2 : 3;
+  // Kontrol noktaları: uzunluğa göre 1–3 (çatalların dışında) + her çatalda bir tane
+  const nCp = Math.min(4 - forkCps.length, wantLen < 3600 ? 1 : wantLen < 6500 ? 2 : 3);
   const checkpoints: number[] = [];
-  // Yolun bir kez geçtiği bir yüksekliğe kaydır (aşağı dönen kıvrımlardan uzak)
   const mainLine = new Track({ id, name: '', world, height, boardWidth: W, road, finishHole, stars: [], timeTargets: { bronze: 3, silver: 2, gold: 1 } }).main;
+  const once = (cy: number) => crossings(mainLine, cy) === 1 && crossings(mainLine, cy - 60) === 1 && crossings(mainLine, cy + 60) === 1;
+  const inFork = (cy: number) => forkRanges.some(([a, b]) => cy > a - 80 && cy < b + 80);
+  for (const fc of forkCps) {
+    for (let off = 0; off < 200; off += 10) {
+      const cand = [fc + off, fc - off].find((cy) => once(cy));
+      if (cand !== undefined) {
+        checkpoints.push(cand);
+        break;
+      }
+    }
+  }
   for (let c = 1; c <= nCp; c++) {
     const want = r10((topY * c) / (nCp + 1));
     for (let off = 0; off < topY; off += 10) {
-      const cand = [want + off, want - off].find((cy) => cy > 100 && cy < topY - 100 && crossings(mainLine, cy) === 1 && crossings(mainLine, cy - 60) === 1 && crossings(mainLine, cy + 60) === 1 && !checkpoints.includes(cy));
+      const cand = [want + off, want - off].find((cy) => cy > 300 && cy < topY - 200 && once(cy) && !inFork(cy) && !checkpoints.some((q) => Math.abs(q - cy) < 400));
       if (cand !== undefined) {
         checkpoints.push(cand);
         break;
@@ -195,14 +246,17 @@ function buildLevel(p: Plan, seed: number): LevelData {
   }
   checkpoints.sort((a, b) => a - b);
 
-  // Vakum: virajların yanında (Dünya 1'de çok, sonra azalır)
+  // Vakum: U dönüşlerinin üstünde (Dünya 1'de her dönüşte, sonra azalır)
   const vacuum: VacuumZone[] = [];
-  const vacEvery = world === 1 ? 1 : world === 2 ? 2 : 3;
-  for (let i = 2; i < road.length - 1; i += vacEvery) {
-    const pt = road[i];
-    if (world === 1 || narrowSpots.includes(i) || i % 3 === 0) {
+  turns.forEach((tn, i) => {
+    const pt = road[tn.top];
+    if (world === 1 || (world === 2 && i % 2 === 0) || (world === 3 && i % 3 === 0)) {
       vacuum.push({ x: pt.x, y: pt.y, radius: r10(pt.w * 0.9 + 60), strength: world === 1 ? 0.6 : 0.55 });
     }
+  });
+  for (const i of narrowSpots) {
+    const pt = road[i];
+    vacuum.push({ x: pt.x, y: pt.y, radius: r10(pt.w * 0.9 + 60), strength: 0.55 });
   }
 
   const level: LevelData = {
@@ -230,11 +284,19 @@ function buildLevel(p: Plan, seed: number): LevelData {
       stars.push({ x: r10((bp[1].x + bp[2].x) / 2), y: r10((bp[1].y + bp[2].y) / 2) });
       continue;
     }
-    const sy = r10(topY * fr[s] + lerp(-120, 120, R()));
+    // Yolun tek geçtiği bir yüksekliğe koy
+    let sy = r10(topY * fr[s] + lerp(-120, 120, R()));
+    for (let off = 0; off < 600; off += 10) {
+      const c = [sy + off, sy - off].find((q) => crossings(mainLine, q) === 1);
+      if (c !== undefined) {
+        sy = c;
+        break;
+      }
+    }
     const cx = track.centerXAt(sy);
     const hw = track.widthAt(sy) / 2;
     const off = (R() < 0.5 ? -1 : 1) * hw * lerp(0.25, 0.45, d);
-    stars.push({ x: r10(cx + off), y: sy });
+    stars.push({ x: r10(clamp(cx + off, 40, W - 40)), y: sy });
   }
   level.stars = stars;
   return level;
@@ -264,20 +326,36 @@ function evaluate(level: LevelData, plan: Plan): { ok: boolean; time: number; fa
 }
 
 mkdirSync(OUT, { recursive: true });
+const only = process.argv[2];
 let total = 0;
 for (const world of [1, 2, 3]) {
   for (let index = 0; index < 10; index++) {
-    const plan: Plan = { world, index, d: index / 9 };
+    const plan: Plan = { world, index, d: index / 9, prog: ((world - 1) * 10 + index) / 29 };
+    const want = targetTime(plan.prog);
+    const lid = `w${world}-${String(index + 1).padStart(2, '0')}`;
+    if (only && !lid.startsWith(only)) continue;
     let done = false;
-    for (let attempt = 0; attempt < 40 && !done; attempt++) {
+    let scale = 1;
+    for (let attempt = 0; attempt < 150 && !done; attempt++) {
       const seed = world * 1000 + index * 37 + attempt * 7919;
-      const level = buildLevel(plan, seed);
+      const level = buildLevel(plan, seed, scale);
+      const v0 = validateLevel({ ...level, timeTargets: { gold: 1, silver: 2, bronze: 3 } });
+      if (!v0.ok) {
+        process.stdout.write(`  ${level.id} tohum ${seed}: geçersiz ${v0.errors.join('; ')}\n`);
+        continue;
+      }
       const ev = evaluate(level, plan);
       if (!ev.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: ${ev.reason}\n`);
         continue;
       }
       const t = ev.time;
+      // Süre hedefin ±%6'i içinde olmalı; değilse uzunluk ölçeğini düzelt
+      if (Math.abs(t / want - 1) > (attempt < 90 ? 0.06 : 0.14)) {
+        scale *= Math.max(0.6, Math.min(1.6, want / t));
+        process.stdout.write(`  ${level.id} tohum ${seed}: süre ${t.toFixed(1)} sn, hedef ${want.toFixed(0)} → ölçek ${scale.toFixed(2)}\n`);
+        continue;
+      }
       level.timeTargets = {
         gold: Math.ceil(t * GOLD),
         silver: Math.ceil(t * SILVER),
@@ -289,12 +367,12 @@ for (const world of [1, 2, 3]) {
         continue;
       }
       writeFileSync(join(OUT, `${level.id}.json`), JSON.stringify(level, null, 2) + '\n');
-      process.stdout.write(`${level.id} "${level.name}" yükseklik ${level.height} bot ${t.toFixed(1)} sn → altın ${level.timeTargets.gold} gümüş ${level.timeTargets.silver} bronz ${level.timeTargets.bronze}\n`);
+      process.stdout.write(`${level.id} "${level.name}" yükseklik ${level.height} bot ${t.toFixed(1)} sn (hedef ${want.toFixed(0)}) kontrol ${level.checkpoints?.length} → altın ${level.timeTargets.gold} gümüş ${level.timeTargets.silver} bronz ${level.timeTargets.bronze}\n`);
       done = true;
       total++;
     }
     if (!done) {
-      process.stdout.write(`HATA: w${world}-${index + 1} üretilemedi\n`);
+      process.stdout.write(`HATA: ${lid} üretilemedi\n`);
       process.exitCode = 1;
     }
   }
