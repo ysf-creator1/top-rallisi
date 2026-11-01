@@ -17,7 +17,7 @@ import { t } from '../i18n';
 import { play, setSoundEnabled, suspendAudio, unlockAudio } from '../platform/audio';
 import { getQueryParam, isIOS, isLandscapePhone, isStandalone, isTouchDevice, requestFullscreen } from '../platform/device';
 import { setHapticsEnabled, vibrate } from '../platform/haptics';
-import { requestTilt, startTilt } from '../platform/tilt';
+import { requestTilt, startTilt, tiltAvailable } from '../platform/tilt';
 import { SaveStore } from '../save/save';
 import type { LevelRecord, RunRecord } from '../save/schema';
 import { h } from './dom';
@@ -369,6 +369,8 @@ export class App {
   }
 
   private async ensureTilt(): Promise<boolean> {
+    // Sensör zaten veri gönderiyorsa izin ekranını tekrar gösterme
+    if (tiltAvailable()) return true;
     const ok = await new Promise<boolean>((resolve) => {
       showTiltPermission(this, async () => resolve(await requestTilt()), () => resolve(false), true);
     });
