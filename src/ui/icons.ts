@@ -1,3 +1,5 @@
+import { JERSEY_COLORS } from '../config/shop';
+import { skinIconUrl } from '../game/render/skins';
 // Yumuşak köşeli, tek kalınlıkta çizgi ikonlar (emoji yok).
 
 const line = (d: string, size = 22, color = 'currentColor', w = 2.2) =>
@@ -53,7 +55,31 @@ export const icons = {
 };
 
 /** Mağaza kostüm ikonları (küçük renkli çizimler) */
-export function costumeIcon(category: string, key: string, tint: string): string {
+const MAGIC_ICONS: Record<string, string> = {
+  snow: `<path d="M22 9l6 12H16z" fill="#3FA36B"/><path d="M11 24a11 6 0 0 0 22 0z" fill="#F7F9FB"/><g fill="#fff"><circle cx="14" cy="12" r="1.3"/><circle cx="30" cy="10" r="1.3"/><circle cx="27" cy="18" r="1.2"/><circle cx="16" cy="19" r="1.2"/></g>`,
+  heart: `<path d="M22 26C12 19 14 9 22 13 30 9 32 19 22 26z" fill="#E5484D"/>`,
+  aquarium: `<circle cx="22" cy="17" r="11" fill="#7FC4E8" opacity=".6"/><ellipse cx="21" cy="17" rx="5" ry="3.2" fill="#F2994A"/><path d="M16 17l-4-3v6z" fill="#F2994A"/><circle cx="24" cy="16" r=".9" fill="#22252A"/><circle cx="27" cy="11" r="1.2" fill="#fff"/>`,
+  atom: `<g fill="none" stroke="#9C8AD0" stroke-width="1.4"><ellipse cx="22" cy="17" rx="10" ry="4"/><ellipse cx="22" cy="17" rx="10" ry="4" transform="rotate(60 22 17)"/><ellipse cx="22" cy="17" rx="10" ry="4" transform="rotate(-60 22 17)"/></g><circle cx="22" cy="17" r="3" fill="#E8907E"/><circle cx="31" cy="15" r="1.6" fill="#4FC9D9"/>`,
+  galaxy: `<circle cx="22" cy="17" r="12" fill="#2B2350"/><path d="M22 17c3-2 6 1 4 4s-8 2-9-3 4-9 10-7" fill="none" stroke="#C9B8FF" stroke-width="2" stroke-linecap="round"/><g fill="#fff"><circle cx="15" cy="10" r=".9"/><circle cx="29" cy="24" r=".9"/><circle cx="30" cy="11" r=".7"/></g>`,
+  solar: `<circle cx="22" cy="17" r="12" fill="#1E2448"/><g fill="none" stroke="#fff" stroke-opacity=".35"><ellipse cx="22" cy="17" rx="7" ry="3"/><ellipse cx="22" cy="17" rx="10.5" ry="4.5"/></g><circle cx="22" cy="17" r="3" fill="#FFC23D"/><circle cx="29" cy="17" r="1.4" fill="#3D8ED0"/><circle cx="14" cy="15" r="1.5" fill="#C1502E"/>`,
+};
+
+const NUMBER_ICON: Record<string, [string, string, string]> = {
+  number: ['#FBF7F0', '#E8907E', '#3B3F45'],
+  race: ['#FBFBFB', '#22252A', '#22252A'],
+  neon: ['#24283A', '#4FE3F0', '#7FF6FF'],
+  gold: ['#F4CF6A', '#C99A2E', '#5A3F10'],
+};
+
+export function costumeIcon(category: string, key: string, tint: string, num = 7): string {
+  if (category === 'flag' || category === 'planet' || category === 'sport') {
+    const url = skinIconUrl(key);
+    const ring = key === 'saturn' ? `<ellipse cx="22" cy="17" rx="20" ry="5" fill="none" stroke="#D9BE84" stroke-width="2.4" transform="rotate(-14 22 17)"/>` : '';
+    return `<svg width="44" height="34" viewBox="0 0 44 34" aria-hidden="true"><image href="${url ?? ''}" x="7" y="2" width="30" height="30"/>${ring}</svg>`;
+  }
+  if (category === 'magic') {
+    return `<svg width="44" height="34" viewBox="0 0 44 34" aria-hidden="true"><circle cx="22" cy="17" r="13" fill="#EAF4FA" stroke="#C9DCE8"/>${MAGIC_ICONS[key] ?? ''}<path d="M14 10a10 10 0 0 1 6-4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+  }
   const s = (inner: string) => `<svg width="44" height="34" viewBox="0 0 44 34" aria-hidden="true">${inner}</svg>`;
   switch (category) {
     case 'color':
@@ -75,6 +101,16 @@ export function costumeIcon(category: string, key: string, tint: string): string
         helmet: `<path d="M8 26a14 14 0 0 1 28 0z" fill="${tint}"/><rect x="20" y="10" width="4" height="16" rx="2" fill="#FBF7F0"/><rect x="6" y="24" width="32" height="4" rx="2" fill="#D88E7E"/>`,
         propeller: `<path d="M12 28a10 10 0 0 1 20 0z" fill="${tint}"/><rect x="21" y="9" width="2" height="10" fill="#9AA2AA"/><ellipse cx="15" cy="8" rx="7" ry="2.2" fill="#E8907E"/><ellipse cx="29" cy="8" rx="7" ry="2.2" fill="#F2C46D"/>`,
         crown: `<path d="M8 26V12l7 6 7-9 7 9 7-6v14z" fill="#E4DED3"/>`,
+        party: `<path d="M22 4L13 28h18z" fill="#F2C46D"/><path d="M19 12l6 2M17 18l9 3M15 24l12 3" stroke="#E8907E" stroke-width="2.4"/><circle cx="22" cy="4" r="3" fill="#8CCFB4"/>`,
+        catears: `<path d="M8 28a14 14 0 0 1 28 0" fill="none" stroke="${tint}" stroke-width="3"/><path d="M9 20l3-14 8 9z" fill="${tint}"/><path d="M35 20l-3-14-8 9z" fill="${tint}"/><path d="M12 16l1-6 4 4z" fill="#E8907E"/><path d="M32 16l-1-6-4 4z" fill="#E8907E"/>`,
+        chef: `<rect x="14" y="18" width="16" height="10" rx="2" fill="#FBFBFB" stroke="#DCE1E5"/><circle cx="15" cy="13" r="6" fill="#fff" stroke="#DCE1E5"/><circle cx="29" cy="13" r="6" fill="#fff" stroke="#DCE1E5"/><circle cx="22" cy="10" r="7" fill="#fff" stroke="#DCE1E5"/>`,
+        cowboy: `<path d="M3 22q4 6 19 6t19-6q-4 2-8 1l-1-13q-4-3-10 0-6-3-10 0l-1 13q-4 1-8-1z" fill="#B07A4A"/><rect x="13" y="20" width="18" height="3" fill="#5A3E28"/>`,
+        santa: `<path d="M9 26q2-18 18-18 6 0 6 10-3-5-6-4l3 12z" fill="#D9423B"/><rect x="7" y="24" width="28" height="6" rx="3" fill="#fff" stroke="#E6E6E6"/><circle cx="33" cy="19" r="3" fill="#fff" stroke="#E6E6E6"/>`,
+        grad: `<path d="M3 14l19-8 19 8-19 8z" fill="#2B2D31"/><path d="M12 18v7q10 5 20 0v-7l-10 4z" fill="#3B3F45"/><path d="M36 15v9" stroke="#F2C46D" stroke-width="2"/><circle cx="36" cy="25" r="2" fill="#F2C46D"/>`,
+        tophat: `<rect x="13" y="4" width="18" height="20" rx="2" fill="#26282C"/><rect x="13" y="19" width="18" height="4" fill="#C9423B"/><rect x="5" y="24" width="34" height="4" rx="2" fill="#26282C"/>`,
+        pirate: `<path d="M3 24q19-22 38 0q-19-6-38 0z" fill="#26282C"/><path d="M5 23q17-5 34 0" stroke="#E9C46A" stroke-width="1.6" fill="none"/><circle cx="22" cy="15" r="3" fill="#fff"/>`,
+        wizard: `<path d="M24 2L13 26h20z" fill="#4B5BA8"/><ellipse cx="22" cy="27" rx="18" ry="4" fill="#4B5BA8"/><circle cx="21" cy="14" r="1.6" fill="#F2C46D"/><circle cx="26" cy="20" r="1.3" fill="#F2C46D"/>`,
+        viking: `<path d="M10 26a12 12 0 0 1 24 0z" fill="#9AA2AA"/><rect x="9" y="24" width="26" height="4" rx="2" fill="#B5884E"/><path d="M11 22Q3 20 5 8q2 8 8 10z" fill="#F3E9D6"/><path d="M33 22q8-2 6-14-2 8-8 10z" fill="#F3E9D6"/>`,
       };
       return s(p[key] ?? '');
     }
@@ -87,13 +123,16 @@ export function costumeIcon(category: string, key: string, tint: string): string
       return s(`<circle cx="13" cy="17" r="7" fill="${fill}" stroke="${tint}" stroke-width="2.6"/><circle cx="31" cy="17" r="7" fill="${fill}" stroke="${tint}" stroke-width="2.6"/><path d="M20 16q2-2 4 0" fill="none" stroke="${tint}" stroke-width="2.4"/>`);
     }
     case 'jersey': {
-      const cols = key === 'rainbow' ? ['#E8907E', '#F2C46D', '#8CCFB4', '#A8CDE8', '#B3A3E0'] : [tint];
+      const cols = JERSEY_COLORS[key] && JERSEY_COLORS[key].length >= 3 ? JERSEY_COLORS[key] : [tint];
       const bands = cols.map((c, i) => `<rect x="9" y="${cols.length > 1 ? 13 + i * 2.4 : 15}" width="26" height="${cols.length > 1 ? 2.4 : 3.2}" fill="${c}"/>`).join('');
       const second = cols.length > 1 ? '' : `<rect x="10" y="21" width="24" height="2.6" fill="${tint}"/>`;
       return s(`<circle cx="22" cy="17" r="13" fill="#FBFBFC" stroke="#DCE1E5"/><clipPath id="jc${key}"><circle cx="22" cy="17" r="13"/></clipPath><g clip-path="url(#jc${key})">${bands}${second}</g>`);
     }
-    case 'number':
-      return s(`<circle cx="22" cy="17" r="12" fill="#FBF7F0" stroke="#E8907E" stroke-width="2.4"/><text x="22" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="13" fill="#3B3F45">${/^\d+$/.test(key) ? key : 12}</text>`);
+    case 'number': {
+      const [bg, ring, ink] = NUMBER_ICON[key] ?? NUMBER_ICON.number;
+      const shape = key === 'race' ? `<rect x="10" y="5" width="24" height="24" rx="4" fill="${bg}" stroke="${ring}" stroke-width="2.4"/>` : `<circle cx="22" cy="17" r="12" fill="${bg}" stroke="${ring}" stroke-width="2.4"/>`;
+      return s(`${shape}<text x="22" y="22" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="600" font-size="13" fill="${ink}">${num}</text>`);
+    }
   }
   return s('');
 }

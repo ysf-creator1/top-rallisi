@@ -50,6 +50,10 @@ export interface Costume {
   jersey: string | null;
   /** Ralli numarası (null = yok) */
   number: number | null;
+  /** Numara stili: number (klasik), race, neon, gold */
+  numberStyle: string | null;
+  /** Yüzeyi kaplayan desen: bayrak, gezegen, spor topu ya da hareketli cam top */
+  skin: string | null;
 }
 
 export interface SaveData {
@@ -83,6 +87,8 @@ export const DEFAULT_COSTUME: Costume = {
   glasses: null,
   jersey: null,
   number: null,
+  numberStyle: null,
+  skin: null,
 };
 
 export function defaultSave(): SaveData {

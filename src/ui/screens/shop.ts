@@ -1,7 +1,7 @@
 // Mağaza (hedef: docs/tasarim/03-gunduz-magaza-kostumler.png, 06-aksam-magaza-toplar.png)
 
 import type { BallType } from '../../config/physics';
-import { BALLS, COSTUMES, COSTUME_CATEGORIES, CROWN_LEVELS, type CostumeCategory, type CostumeItem } from '../../config/shop';
+import { BALLS, COSTUMES, COSTUME_CATEGORIES, CROWN_LEVELS, isSkinCategory, type CostumeCategory, type CostumeItem } from '../../config/shop';
 import { formatPoints, t } from '../../i18n';
 import { play } from '../../platform/audio';
 import type { Costume } from '../../save/schema';
@@ -34,6 +34,29 @@ const PARK_BG = `<svg viewBox="0 0 358 240" preserveAspectRatio="xMidYMid slice"
 <rect y="196" width="358" height="44" fill="#C2E2AC"/><rect y="220" width="358" height="20" fill="#B5DA9D"/></svg>`;
 
 type Tab = 'balls' | 'costumes';
+type SimpleSlot = 'color' | 'sticker' | 'hat' | 'glasses' | 'jersey';
+
+/** Kostümü kendi yuvasına yazar (it null ise o yuvayı boşaltır) */
+function applyItem(c: Costume, category: CostumeCategory, it: CostumeItem | null): void {
+  if (category === 'number') {
+    c.number = it ? c.number ?? 7 : null;
+    c.numberStyle = it ? it.key : null;
+  } else if (isSkinCategory(category)) c.skin = it ? it.key : null;
+  else c[category as SimpleSlot] = it ? it.key : null;
+}
+
+/** Bu kategoride hiçbir şey takılı değil mi? */
+function slotEmpty(c: Costume, category: CostumeCategory): boolean {
+  if (category === 'number') return c.number === null;
+  if (isSkinCategory(category)) return c.skin === null;
+  return c[category as SimpleSlot] === null;
+}
+
+function isWorn(c: Costume, it: CostumeItem): boolean {
+  if (it.category === 'number') return c.number !== null && (c.numberStyle ?? 'number') === it.key;
+  if (isSkinCategory(it.category)) return c.skin === it.key;
+  return c[it.category as SimpleSlot] === it.key;
+}
 
 /** Mağaza en son bakılan bölümde açılır (ilk seferde Toplar) */
 let lastTab: Tab = 'balls';
@@ -61,10 +84,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
 
   const previewCostume = (): Costume => {
     const c: Costume = { ...save.data.costume };
-    if (trying) {
-      if (trying.category === 'number') c.number = c.number ?? 12;
-      else c[trying.category] = trying.key;
-    }
+    if (trying) applyItem(c, trying.category, trying);
     return c;
   };
 
@@ -150,10 +170,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
   };
 
   const equip = (it: CostumeItem | null, category: CostumeCategory) => {
-    save.update((d) => {
-      if (category === 'number') d.costume.number = it ? d.costume.number ?? 12 : null;
-      else d.costume[category] = it ? it.key : null;
-    });
+    save.update((d) => applyItem(d.costume, category, it));
   };
 
   const renderCostumes = () => {
@@ -164,7 +181,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
     const grid = h('div.item-grid');
     const cur = save.data.costume;
     // "Yok / kendi rengi" kartı
-    const noneOn = cat === 'number' ? cur.number === null : cur[cat] === null;
+    const noneOn = slotEmpty(cur, cat);
     grid.append(
       h(`button.item-card${noneOn && !trying ? '.on' : ''}`, { onclick: () => { trying = null; equip(null, cat); render(); } }, [
         h('div.ico', { style: { background: '#F4F1EC' }, html: cat === 'color' ? costumeIcon('color', 'default', '#F6F7F9') : icons.close() }),
@@ -177,8 +194,8 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
       const locked = !!it.lockedText && !crownOpen;
       // Ücretsiz açılan parça (taç) satın almadan kullanılabilir
       const has = owned(it.id) || (crownOpen && it.price === 0);
-      const on = has && (cat === 'number' ? cur.number !== null : cur[cat] === it.key);
-      const name = cat === 'number' ? t('shop.number') : t(`costume.${it.category}.${it.key}`);
+      const on = has && isWorn(cur, it);
+      const name = t(`costume.${it.category}.${it.key}`);
       let st: HTMLElement;
       if (locked) st = h('span.st', t(it.lockedText!));
       else if (on) st = h('span.st.equipped', t('shop.equipped'));
@@ -199,7 +216,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
             render();
           },
         }, [
-          h('div.ico', { style: { background: locked ? '#EFEBE5' : ICON_BG[it.tint] ?? '#F4F1EC' }, html: costumeIcon(cat, cat === 'number' ? String(cur.number ?? 12) : it.key, it.tint) }),
+          h('div.ico', { style: { background: locked ? '#EFEBE5' : ICON_BG[it.tint] ?? '#F4F1EC' }, html: costumeIcon(cat, it.key, it.tint, cur.number ?? 7) }),
           h('span.nm', name),
           st,
         ]),
@@ -209,7 +226,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
     if (cat === 'number' && cur.number !== null) {
       const num = h('b', String(cur.number));
       const set = (d: number) => {
-        save.update((s) => (s.costume.number = Math.max(1, Math.min(99, (s.costume.number ?? 12) + d))));
+        save.update((s) => (s.costume.number = Math.max(0, Math.min(99, (s.costume.number ?? 7) + d))));
         num.textContent = String(save.data.costume.number);
         refreshPreview();
       };
@@ -235,7 +252,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
           equip(it, it.category);
           trying = null;
           play('buy');
-          toast(app, t('toast.bought', { item: it.category === 'number' ? t('shop.number') : t(`costume.${it.category}.${it.key}`) }));
+          toast(app, t('toast.bought', { item: t(`costume.${it.category}.${it.key}`) }));
           render();
         }),
       );
