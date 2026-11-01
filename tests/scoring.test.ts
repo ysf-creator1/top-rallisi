@@ -1,0 +1,50 @@
+import { describe, expect, test } from 'vitest';
+import { nextTimeStarGap, pointsEarned, scoreValue, timeBonus, timeStars } from '../src/config/scoring';
+
+const tt = { bronze: 60, silver: 40, gold: 28 };
+
+describe('süre yıldızları', () => {
+  test('bitirmek 1, gümüş 2, altın 3', () => {
+    expect(timeStars(70, tt, false)).toBe(1);
+    expect(timeStars(55, tt, false)).toBe(1);
+    expect(timeStars(40, tt, false)).toBe(2);
+    expect(timeStars(30, tt, false)).toBe(2);
+    expect(timeStars(28, tt, false)).toBe(3);
+  });
+
+  test('yardım modunda en fazla 2', () => {
+    expect(timeStars(10, tt, true)).toBe(2);
+  });
+
+  test('sonraki yıldız için gereken süre', () => {
+    expect(nextTimeStarGap(45, tt, false)).toEqual({ star: 'silver', gap: 5 });
+    expect(nextTimeStarGap(30.6, tt, false)?.star).toBe('gold');
+    expect(nextTimeStarGap(30.6, tt, false)?.gap).toBeCloseTo(2.6);
+    expect(nextTimeStarGap(20, tt, false)).toBeNull();
+    expect(nextTimeStarGap(30, tt, true)).toBeNull();
+  });
+});
+
+describe('puan', () => {
+  test('taban + yıldız + süre bonusu', () => {
+    expect(timeBonus(50, tt)).toBe(20);
+    expect(timeBonus(70, tt)).toBe(0);
+    expect(scoreValue(2, 2, 20)).toBe(80 + 40 + 20);
+  });
+
+  test('ilk oyunda tam puan', () => {
+    expect(pointsEarned(undefined, 2, [true, true, false], 20)).toBe(80 + 40 + 20);
+  });
+
+  test('aynı sonucu tekrar oynamak puan vermez', () => {
+    const prev = { timeStars: 2, stars: [true, true, false], bonus: 20 };
+    expect(pointsEarned(prev, 2, [true, true, false], 20)).toBe(0);
+    expect(pointsEarned(prev, 1, [true, false, false], 5)).toBe(0);
+  });
+
+  test('sadece yeni kazanılanlar ve rekor farkı ödenir', () => {
+    const prev = { timeStars: 2, stars: [true, false, false], bonus: 20 };
+    // Altın + yeni bir yıldız + 10 puanlık daha iyi bonus
+    expect(pointsEarned(prev, 3, [false, true, false], 30)).toBe(120 - 80 + 20 + 10);
+  });
+});

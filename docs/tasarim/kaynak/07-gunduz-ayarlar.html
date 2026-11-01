@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>Pastel Park · Ayarlar: parkur rengi ve kontroller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C9685A}a:hover{color:#A9503F}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F6F1E8; font-family: 'Nunito', system-ui, sans-serif; color: #3B3F45; display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 20px; box-sizing: border-box">
+
+<div style="display: flex; align-items: center; gap: 14px">
+<button aria-label="Geri" style="width: 46px; height: 46px; border: none; border-radius: 23px; background: #FFFFFF; box-shadow: 0 6px 18px rgba(59, 63, 69, 0.08); display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="#3B3F45" style="stroke-width: 2.4px; stroke-linecap: round; stroke-linejoin: round"></path></svg>
+</button>
+<div style="font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 600">Ayarlar</div>
+</div>
+
+<div style="height: 118px; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 26px rgba(59, 63, 69, 0.08)">
+<svg width="358" height="118" viewBox="0 0 358 118" role="img" aria-label="Önizleme: siyah parkur üzerinde beyaz top">
+<defs>
+<linearGradient id="caSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: #CDE5EF"></stop><stop offset="1" style="stop-color: #F2EEE3"></stop></linearGradient>
+<radialGradient id="caBall" cx="0.36" cy="0.3" r="0.8"><stop offset="0" style="stop-color: #FFFFFF"></stop><stop offset="0.5" style="stop-color: #F2F4F6"></stop><stop offset="1" style="stop-color: #C9D1D8"></stop></radialGradient>
+</defs>
+<rect width="358" height="118" fill="url(#caSky)"></rect>
+<g fill="#A9CAA7"><circle cx="20" cy="70" r="24"></circle><circle cx="60" cy="62" r="26"></circle><circle cx="300" cy="66" r="26"></circle><circle cx="344" cy="70" r="22"></circle></g>
+<rect y="78" width="358" height="40" fill="#BFE0A8"></rect>
+<path d="M-10 96 C60 96 90 34 170 40 C250 46 270 100 370 92" fill="none" stroke="#4A4F56" style="stroke-width: 40px; stroke-linecap: round"></path>
+<path d="M-10 97 C60 97 90 35 170 41 C250 47 270 101 370 93" fill="none" stroke="#2E3136" style="stroke-width: 36px; stroke-linecap: round"></path>
+<path d="M120 62 Q170 70 220 60" fill="none" stroke="#98A1AA" style="stroke-width: 6px; stroke-linecap: round"></path>
+<path d="M120 62 Q170 70 220 60" fill="none" stroke="#DCE1E5" style="stroke-width: 4px; stroke-linecap: round"></path>
+<circle cx="168" cy="54" r="10" fill="url(#caBall)"></circle>
+<rect x="12" y="10" width="70" height="22" rx="11" fill="#FBF8F2" style="opacity: 0.9"></rect>
+<text x="47" y="25" fill="#5A6068" style="font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800; text-anchor: middle">ÖNİZLEME</text>
+</svg>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 600">Parkur rengi</span>
+<span style="font-size: 13px; font-weight: 700; color: #6A7078">Siyah · varsayılan</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+<button aria-label="Siyah, seçili" style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800; color: #3B3F45; box-shadow: 0 0 0 2px #8CCFB4"><span style="width: 32px; height: 32px; border-radius: 16px; background: #2E3136"></span>Siyah</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #4A4F57"></span>Antrasit</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #2F3E5C"></span>Gece mavisi</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #33503F"></span>Orman</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #5C2E36"></span>Bordo</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #5A4334"></span>Ceviz</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #A99AD6"></span>Lavanta</button>
+<button style="height: 70px; border: none; border-radius: 18px; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #5A6068"><span style="width: 32px; height: 32px; border-radius: 16px; background: #9FD3C0"></span>Mint</button>
+</div>
+</div>
+
+<div style="background: #FFFFFF; border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 18px rgba(59, 63, 69, 0.05)">
+<span style="font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 600">Kontroller</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F1ECE3; border-radius: 18px">
+<button style="height: 40px; border: none; border-radius: 14px; background: #8CCFB4; color: #23302A; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800">İki halat</button>
+<button style="height: 40px; border: none; border-radius: 14px; background: transparent; color: #5A6068; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700">Eğme + tek halat</button>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="display: flex; flex-direction: column; line-height: 1.2"><span style="font-size: 14px; font-weight: 800">Tek halat tarafı</span><span style="font-size: 12px; font-weight: 600; color: #6A7078">Eğme modunda</span></span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F1ECE3; border-radius: 14px; width: 128px">
+<button style="height: 32px; border: none; border-radius: 10px; background: transparent; color: #5A6068; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700">Sol</button>
+<button style="height: 32px; border: none; border-radius: 10px; background: #FFFFFF; box-shadow: 0 2px 6px rgba(59, 63, 69, 0.1); color: #3B3F45; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800">Sağ</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="caSens" style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 800">Hassasiyet <span style="font-weight: 700; color: #6A7078">Orta</span></label>
+<input id="caSens" type="range" min="1" max="5" value="3" style="width: 100%; accent-color: #8CCFB4">
+</div>
+</div>
+
+<div style="background: #FFFFFF; border-radius: 24px; padding: 6px 16px; display: flex; flex-direction: column; box-shadow: 0 6px 18px rgba(59, 63, 69, 0.05)">
+<div style="height: 46px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #F1ECE3">
+<span style="font-size: 14px; font-weight: 800">Yardım modu</span>
+<button aria-label="Yardım modu açık" aria-pressed="true" style="width: 50px; height: 30px; border: none; border-radius: 15px; background: #8CCFB4; padding: 3px; display: flex; justify-content: flex-end"><span style="width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15)"></span></button>
+</div>
+<div style="height: 46px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #F1ECE3">
+<span style="font-size: 14px; font-weight: 800">Titreşim</span>
+<button aria-label="Titreşim açık" aria-pressed="true" style="width: 50px; height: 30px; border: none; border-radius: 15px; background: #8CCFB4; padding: 3px; display: flex; justify-content: flex-end"><span style="width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15)"></span></button>
+</div>
+<div style="height: 46px; display: flex; align-items: center; justify-content: space-between">
+<span style="font-size: 14px; font-weight: 800">Ses</span>
+<button aria-label="Ses kapalı" aria-pressed="false" style="width: 50px; height: 30px; border: none; border-radius: 15px; background: #E4DED3; padding: 3px; display: flex; justify-content: flex-start"><span style="width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15)"></span></button>
+</div>
+</div>
+</div>
+</body>
+</html>
