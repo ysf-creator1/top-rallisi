@@ -14,6 +14,7 @@ export class Hud {
   private ghost: HTMLElement;
   private toastEl: HTMLElement;
   private hint: HTMLElement;
+  private assistTip: HTMLElement;
   private tiltCard: HTMLElement;
   private sideBtn: HTMLElement;
   private calib: HTMLElement;
@@ -30,6 +31,7 @@ export class Hud {
     this.label = h('div.level-chip', '');
     this.ghost = h('div.ghost-chip', '');
     this.toastEl = h('div.hud-toast.glass', '');
+    this.assistTip = h('div.assist-tip', [svg(icons.assist(14)), h('span', t('hud.assistTip'))]);
     this.hint = h('div.hint.glass', [svg(icons.rope()), h('span', t('hud.hint.ropes'))]);
     this.tiltCard = h('div.tilt-card.glass', [svg(icons.phone()), h('div', [h('b', t('hud.hint.tilt')), h('span', t('hud.hint.tiltSub'))])]);
     this.sideBtn = h('button.side-btn.glass', { onclick: () => this.swapSide() }, [svg(icons.swap()), h('span.txt', '')]);
@@ -39,6 +41,7 @@ export class Hud {
       this.windLayer,
       h('div.hud-top', [pause, this.timer, this.stars]),
       h('div.hud-label', [this.label, this.ghost]),
+      this.assistTip,
       this.toastEl,
       this.hint,
       this.tiltCard,
@@ -75,6 +78,12 @@ export class Hud {
       return el;
     });
     this.toastEl.classList.remove('show');
+    this.assistTip.classList.remove('show');
+  }
+
+  /** Oyuncu bu etapta çok düştüyse (yardım modu kapalıyken) yardım modunu öner */
+  suggestAssist(): void {
+    this.assistTip.classList.add('show');
   }
 
   /** Kontrol türü oyun sırasında değişince göstergeleri yeniler */

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { t } from '../../i18n';
 import { magnetActive } from '../physics/sim';
-import { ARM_HALF, ARM_HUB_R, armAngle, popperState, type PopperState } from '../physics/obstacles';
+import { ARM_HALF, ARM_HUB_R, POPPER_VIS, armAngle, popperState, type PopperState } from '../physics/obstacles';
 import type { LevelData } from '../levels/types';
 import type { Track } from '../physics/track';
 import { S, canvasTexture, makeCanvas, matte, starShape } from './common';
@@ -350,7 +350,7 @@ export class Props {
     for (const p of L.poppers ?? []) {
       const g = new THREE.Group();
       g.position.set(lx(p.x), p.y * S, 0);
-      const R = p.r * S;
+      const R = p.r * POPPER_VIS * S;
       const pad = new THREE.Group();
       const sideMat = matte(HAZARD, { roughness: 0.5, emissive: '#FF8A3A', emissiveIntensity: 0 });
       const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.08, 40), sideMat);

@@ -390,6 +390,8 @@ export class App {
           const fromCp = !!this.session && this.session.sim.lastCheckpoint >= 0;
           if (cause === 'edge') this.hud.flash(t(fromCp ? 'hud.fell' : 'hud.fellStart'), 'warn');
           else this.hud.flash(`${t(`hud.cause.${cause}`)} ${t(fromCp ? 'hud.from.cp' : 'hud.from.start')}`, 'warn');
+          // 5'ten fazla düşen ve yardım modu kapalı olan oyuncuya yardım modunu öner
+          if (this.session && !this.session.opts.assist && this.session.sim.falls > ASSIST_TIP_FALLS) this.hud.suggestAssist();
         },
         onFinish: (r) => this.finishLevel(level, r),
       },
@@ -569,6 +571,9 @@ export class App {
 }
 
 /** Bu etap bir engel türünün ilk göründüğü etapsa o engelin ipucu anahtarı */
+/** Bu kadar düşüşten sonra yardım modu önerilir */
+const ASSIST_TIP_FALLS = 5;
+
 function obstacleHint(level: LevelData): string | null {
   const kinds = [
     ['arm', (l: LevelData) => !!l.arms?.length],

@@ -1,10 +1,11 @@
 // Engeller (Dünya 4): düşürme delikleri, dönen kollar ve fırlatıcılar.
 // Zamanlı engeller fizik saatine (simTime) bağlıdır; çizim de aynı fonksiyonları kullanır.
+// Delik ve fırlatıcı topu düşürür; dönen kol düşürmez, topu döndüğü yöne iter.
 
 import { ASSIST, physics } from '../../config/physics';
 import type { LevelData, Popper, SpinArm } from '../levels/types';
 
-export type HazardCause = 'hole' | 'arm' | 'pop';
+export type HazardCause = 'hole' | 'pop';
 export type FallCause = 'edge' | HazardCause;
 
 /** Göbek yarıçapı ve kol kalınlığının yarısı (birim) */
@@ -13,6 +14,10 @@ export const ARM_HALF = 10;
 /** Fırlatıcı yükselmeden önce bu kadar süre uyarır (sn) */
 export const POPPER_WARN = 0.7;
 export const POPPER_UP = 0.5;
+/** Fırlatıcı tablasının görünen yarıçapı, etki yarıçapına oranla.
+ *  Top merkezi p.r içine girince atar; tabla bundan küçük çizilir ki
+ *  topun gövdesi tablanın üstüne binince fırlatma olsun. */
+export const POPPER_VIS = 0.68;
 
 /** Engellerin saati: yardım modunda yavaş */
 export function obstacleTime(simTime: number, assist: boolean): number {
@@ -58,7 +63,7 @@ function segDist(px: number, py: number, ax: number, ay: number, bx: number, by:
   return Math.hypot(px - ax - dx * k, py - ay - dy * k);
 }
 
-/** Top (x, y) bu kola değiyor mu? */
+/** Top (x, y) bu kola (göbek dahil) değiyor mu? Otomatik pilot kollardan uzak durmak için kullanır. */
 export function armHits(a: SpinArm, x: number, y: number, t: number, margin = 0): boolean {
   const reach = physics.ballRadius * physics.armContact + margin;
   const d = Math.hypot(x - a.x, y - a.y);
@@ -75,6 +80,59 @@ export function armHits(a: SpinArm, x: number, y: number, t: number, margin = 0)
   return false;
 }
 
+export interface ArmTouch {
+  /** Kol yüzeyinden topa doğru birim yön */
+  nx: number;
+  ny: number;
+  /** İç içe geçme miktarı (birim) */
+  pen: number;
+  /** Kolun değme noktasındaki hızı (birim/sn) */
+  vx: number;
+  vy: number;
+}
+
+/**
+ * Top bir kol kanadına değiyor mu? Göbeğe (merkeze) değme sayılmaz.
+ * omega: kolun gerçek açısal hızı (rad/sn, yardım modunun yavaşlatması dahil).
+ */
+export function armTouch(a: SpinArm, x: number, y: number, t: number, omega: number, reach: number, out: ArmTouch): boolean {
+  const d = Math.hypot(x - a.x, y - a.y);
+  const lim = ARM_HALF + reach;
+  if (d > a.length + lim) return false;
+  const n = a.blades ?? 2;
+  const th = armAngle(a, t);
+  let found = false;
+  for (let i = 0; i < n; i++) {
+    const ang = th + (i * Math.PI * 2) / n;
+    const ux = Math.cos(ang);
+    const uy = Math.sin(ang);
+    // Kanat boyunca en yakın nokta (göbekten uzaklık)
+    let k = (x - a.x) * ux + (y - a.y) * uy;
+    k = k < 0 ? 0 : k > a.length ? a.length : k;
+    if (k < ARM_HUB_R) continue;
+    const cx = a.x + ux * k;
+    const cy = a.y + uy * k;
+    const dist = Math.hypot(x - cx, y - cy);
+    const pen = lim - dist;
+    if (pen <= 0 || (found && pen <= out.pen)) continue;
+    found = true;
+    out.pen = pen;
+    if (dist > 0.5) {
+      out.nx = (x - cx) / dist;
+      out.ny = (y - cy) / dist;
+    } else {
+      // Tam üstündeyse dönüş yönüne it
+      const s = Math.sign(omega) || 1;
+      out.nx = -uy * s;
+      out.ny = ux * s;
+    }
+    // Dönen noktanın hızı: omega × r
+    out.vx = -omega * uy * k;
+    out.vy = omega * ux * k;
+  }
+  return found;
+}
+
 const tmpState: PopperState = { lift: 0, warn: 0, active: false };
 
 /** Top bu konumda ve bu engel saatinde bir engele takılıyor mu? */
@@ -84,9 +142,6 @@ export function hitObstacle(L: LevelData, x: number, y: number, t: number): Haza
   }
   for (const p of L.poppers ?? []) {
     if (Math.hypot(x - p.x, y - p.y) < p.r && popperState(p, t, tmpState).active) return 'pop';
-  }
-  for (const a of L.arms ?? []) {
-    if (armHits(a, x, y, t)) return 'arm';
   }
   return null;
 }

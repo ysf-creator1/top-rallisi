@@ -45,6 +45,36 @@ describe('engeller', () => {
     expect(armHits(a, 510, 1000, 1.3)).toBe(true);
   });
 
+  test('dönen kol düşürmez; topu döndüğü yöne iter, göbek bir şey yapmaz', () => {
+    // Top çubuğun ortasında durur; kol yukarıdan aşağı (saat yönünde) iner ve topu sağa iter
+    const run = (arm: NonNullable<LevelData['arms']>[number]) => {
+      const wide = { road: [{ x: 500, y: 0, w: 900 }, { x: 500, y: 2900, w: 900 }] };
+      const sim = new Simulation(level({ ...wide, arms: [arm] }), { ball: 'standard', assist: false });
+      const x0 = sim.ballX;
+      let fell = false;
+      let maxV = 0;
+      for (let i = 0; i < 100; i++) {
+        sim.step();
+        maxV = Math.max(maxV, sim.v);
+        for (const e of sim.drainEvents()) if (e.type === 'fall') fell = true;
+      }
+      return { fell, dx: sim.ballX - x0, maxV };
+    };
+    const probe = new Simulation(level(), { ball: 'standard', assist: false });
+    const bx = probe.ballX;
+    const by = probe.ballY;
+    // Göbek topun solunda, kol yukarıdan saat yönünde (-) iner: topa değince sağa iter
+    const pushed = run({ x: bx - 90, y: by, length: 160, speed: -2, phase: Math.PI / 2, blades: 1 });
+    expect(pushed.fell).toBe(false);
+    expect(pushed.maxV).toBeGreaterThan(100);
+    expect(pushed.dx).toBeGreaterThan(20);
+    // Göbek tam topun altında: kol topa değmeden döner, top yerinde kalır
+    const hub = run({ x: bx, y: by, length: 160, speed: 2, phase: 0, blades: 0 });
+    expect(hub.fell).toBe(false);
+    expect(Math.abs(hub.dx)).toBeLessThan(5);
+    expect(hitObstacle(level({ arms: [{ x: bx, y: by, length: 160, speed: 2 }] }), bx, by, 0)).toBeNull();
+  });
+
   test('yardım modunda engeller yavaş', () => {
     expect(obstacleTime(10, true)).toBeLessThan(10);
     expect(obstacleTime(10, false)).toBe(10);

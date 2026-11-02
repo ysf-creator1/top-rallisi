@@ -4,7 +4,7 @@
 import { ASSIST, BALL_TRAITS, WORLD_VACUUM, physics, type BallType } from '../../config/physics';
 import type { LevelData } from '../levels/types';
 import { barFrame, barPoint, equilibriumTilt, localAngle, type BarFrame } from './bar';
-import { hitObstacle, obstacleTime, safeSpot, type FallCause } from './obstacles';
+import { armTouch, hitObstacle, obstacleTime, safeSpot, type ArmTouch, type FallCause } from './obstacles';
 import { Track, type NearestResult, type Polyline } from './track';
 
 export type SimPhase = 'playing' | 'falling' | 'finishing' | 'finished';
@@ -240,6 +240,7 @@ export class Simulation {
     this.moveEnds(dt);
     this.moveBall(dt);
     this.updateBallPosition();
+    if (this.level.arms?.length && this.pushByArms()) this.updateBallPosition();
     this.checkRules();
   }
 
@@ -304,6 +305,45 @@ export class Simulation {
         this.v = -this.v * rest;
       }
     }
+  }
+
+  private readonly touch: ArmTouch = { nx: 0, ny: 0, pen: 0, vx: 0, vy: 0 };
+
+  /**
+   * Dönen kollar topu düşürmez, döndükleri yöne iter. Top çubuğun üstünde
+   * yuvarlandığı için itme çubuk doğrultusunda olur. Kol çubuğa dik bastırıyorsa
+   * (top kolun altından/üstünden geçiyorsa) bir şey olmaz. Göbek topa dokunmaz.
+   */
+  private pushByArms(): boolean {
+    const assist = this.opts.assist;
+    const t = obstacleTime(this.simTime, assist);
+    const scale = assist ? ASSIST.obstacleTimeScale : 1;
+    const reach = physics.ballRadius * physics.armContact;
+    const f = this.frame;
+    const r = physics.ballRadius;
+    const tc = this.touch;
+    let moved = false;
+    for (const a of this.level.arms ?? []) {
+      if (!armTouch(a, this.ballX, this.ballY, t, a.speed * scale, reach, tc)) continue;
+      // Değme yönünün çubuk boyunca payı
+      const nb = tc.nx * f.cos + tc.ny * f.sin;
+      if (Math.abs(nb) < 0.3) continue;
+      // Topu koldan dışarı çıkar
+      this.u += Math.max(-60, Math.min(60, tc.pen / nb));
+      this.u = Math.max(r, Math.min(f.length - r, this.u));
+      // Kol ile top birbirine yaklaşıyorsa çarpışma: top kolun hızını alır ve seker
+      const vn = tc.vx * tc.nx + tc.vy * tc.ny;
+      const rel = this.v * nb - vn;
+      if (rel < 0) {
+        // Çapraz vuruşta itme aşırı büyümesin diye bölen en az 0.5
+        this.v = (vn - physics.armBounce * rel) / (Math.sign(nb) * Math.max(0.5, Math.abs(nb)));
+        const vmax = physics.maxBallSpeed * (assist ? ASSIST.maxSpeedMultiplier : 1);
+        this.v = Math.max(-vmax, Math.min(vmax, this.v));
+        if (vn > 40) this.events.push({ type: 'wall', strength: Math.min(1, vn / 600) });
+      }
+      moved = true;
+    }
+    return moved;
   }
 
   private readonly extOut = { ax: 0, ay: 0 };
@@ -432,19 +472,6 @@ export class Simulation {
     const L = this.level;
     if (cause === 'hole') {
       for (const h of L.holes ?? []) if (Math.hypot(bx - h.x, by - h.y) < h.r) ((fi.x = h.x), (fi.y = h.y));
-    } else if (cause === 'arm') {
-      // Kolun o noktadaki hareket yönü: göbek etrafında teğet
-      let best = Infinity;
-      for (const a of L.arms ?? []) {
-        const d = Math.hypot(bx - a.x, by - a.y);
-        if (d >= best) continue;
-        best = d;
-        const s = Math.sign(a.speed) || 1;
-        const rx = (bx - a.x) / Math.max(1, d);
-        const ry = (by - a.y) / Math.max(1, d);
-        fi.dx = -ry * s;
-        fi.dy = rx * s;
-      }
     } else if (cause === 'pop') {
       fi.dx = bx < 500 ? 1 : -1;
     }

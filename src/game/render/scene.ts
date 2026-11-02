@@ -43,7 +43,7 @@ export interface RenderState {
   ballScale: number;
   /**
    * Düşme animasyonu: t 0→1, dir topun kaydığı yön (−1 sol, +1 sağ); düşmüyorsa null.
-   * cause: neden düştü; delikte (x, y) deliğin merkezi, kolda (dx, dy) savrulma yönü.
+   * cause: neden düştü; delikte (x, y) deliğin merkezi.
    */
   fall?: { t: number; dir: number; cause?: FallCause; x?: number; y?: number; dx?: number; dy?: number } | null;
   /** Yeniden doğma: 0→1 (1 = bitti) */
@@ -431,15 +431,6 @@ export class GameRenderer {
         z = BAR_Z + t * 3.2;
         roll += f.dir * t * 8;
         sc *= Math.min(1, (1 - t) / 0.3);
-      } else if (f && f.cause === 'arm' && f.dx !== undefined && f.dy !== undefined) {
-        // Kol topu çarptığı yöne savurur
-        const t = f.t;
-        const d = (t * 2 - t * t) * R * 5;
-        x += f.dx * d;
-        y += f.dy * d;
-        z = BAR_Z + Math.sin(t * Math.PI) * 0.5;
-        roll += t * 10 * (f.dx >= 0 ? 1 : -1);
-        sc *= Math.min(1, (1 - t) / 0.25);
       } else if (f) {
         // Çubuktan geriye ve aşağı yumuşakça süzülür, hafifçe döner, küçülür
         const t = f.t;

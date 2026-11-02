@@ -38,8 +38,10 @@ export interface PhysicsConfig {
   windForce: number;
   /** Mıknatıs kuvvet ölçeği (birim/sn²) */
   magnetForce: number;
-  /** Dönen kola değme mesafesi, top yarıçapına oranla (küçük = affedici) */
+  /** Dönen kola değme mesafesi, top yarıçapına oranla */
   armContact: number;
+  /** Dönen kolun topu itme gücü: 0 = sadece yoldan çeker, 1 = kolun iki katı hızla sektirir */
+  armBounce: number;
 }
 
 export const DEFAULT_PHYSICS: PhysicsConfig = {
@@ -62,6 +64,7 @@ export const DEFAULT_PHYSICS: PhysicsConfig = {
   windForce: 900,
   magnetForce: 1100,
   armContact: 0.75,
+  armBounce: 0.5,
 };
 
 /** Canlı değiştirilebilen tek kopya. */

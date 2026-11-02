@@ -26,6 +26,7 @@ const SLIDERS: [keyof PhysicsConfig, number, number, number][] = [
   ['windForce', 0, 3000, 50],
   ['magnetForce', 0, 3000, 50],
   ['armContact', 0.3, 1.2, 0.05],
+  ['armBounce', 0, 1.5, 0.05],
   ['starPickupRadius', 20, 160, 5],
 ];
 

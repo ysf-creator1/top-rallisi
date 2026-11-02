@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { trackPalette, type TrackPalette } from '../../config/theme';
 import type { LevelData } from '../levels/types';
+import { POPPER_VIS } from '../physics/obstacles';
 import type { Polyline, Track } from '../physics/track';
 import { S, canvasTexture, makeCanvas, type Quality } from './common';
 
@@ -192,7 +193,7 @@ export class TrackSurface {
       if (p.y + p.r < y0 - 20 || p.y - p.r > y1 + 20) continue;
       ctx.fillStyle = '#121315';
       ctx.beginPath();
-      ctx.arc(toX(p.x), toY(p.y), (p.r + 6) * ppu, 0, Math.PI * 2);
+      ctx.arc(toX(p.x), toY(p.y), (p.r * POPPER_VIS + 6) * ppu, 0, Math.PI * 2);
       ctx.fill();
     }
   }
