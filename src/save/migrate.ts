@@ -32,6 +32,11 @@ function sanitize(d: SaveData): SaveData {
     flags: { ...def.flags, ...(d.flags ?? {}) },
     levels: d.levels && typeof d.levels === 'object' ? d.levels : {},
   };
+  // Eski varsayılan (0,5) hiç değiştirilmemişse yeni varsayılana (düşük) çek; bir kez yapılır
+  if (!(d.flags as { tiltLow?: boolean } | undefined)?.tiltLow) {
+    if (out.settings.tiltSensitivity === 0.5) out.settings.tiltSensitivity = DEFAULT_SETTINGS.tiltSensitivity;
+    out.flags.tiltLow = true;
+  }
   if (!TRACK_COLORS.some((c) => c.id === out.settings.trackColor)) out.settings.trackColor = 'black';
   const balls = Object.keys(BALL_TRAITS) as BallType[];
   out.ownedBalls = (Array.isArray(d.ownedBalls) ? d.ownedBalls : []).filter((b) => balls.includes(b));

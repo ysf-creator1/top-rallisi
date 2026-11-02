@@ -68,3 +68,17 @@ describe('kayıt sürüm geçişi', () => {
     expect(store.keys().some((k) => k.startsWith(GHOST_PREFIX))).toBe(false);
   });
 });
+
+describe('eğim duyarlılığı varsayılanı', () => {
+  test('yeni kayıtta düşük, eski dokunulmamış 0,5 düşüğe çekilir, elle seçilen korunur', () => {
+    expect(defaultSave().settings.tiltSensitivity).toBeLessThan(0.34);
+    expect(defaultSave().settings.sensitivity).toBe(0.5);
+    const old = migrate({ version: 2, settings: { tiltSensitivity: 0.5 }, flags: { a2hsShown: true } });
+    expect(old.settings.tiltSensitivity).toBeLessThan(0.34);
+    expect(old.flags.tiltLow).toBe(true);
+    const custom = migrate({ version: 2, settings: { tiltSensitivity: 0.9 } });
+    expect(custom.settings.tiltSensitivity).toBe(0.9);
+    const again = migrate({ version: 2, settings: { tiltSensitivity: 0.5 }, flags: { tiltLow: true } });
+    expect(again.settings.tiltSensitivity).toBe(0.5);
+  });
+});

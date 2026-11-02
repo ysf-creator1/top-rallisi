@@ -65,14 +65,14 @@ export interface SaveData {
   ball: BallType;
   ownedCostumes: string[];
   costume: Costume;
-  flags: { a2hsShown: boolean; hintRopes: boolean; hintTilt: boolean };
+  flags: { a2hsShown: boolean; hintRopes: boolean; hintTilt: boolean; /** Eğim duyarlılığı varsayılanı düşüğe çekildi */ tiltLow: boolean };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   control: 'ropes',
   ropeSide: 'right',
   sensitivity: 0.5,
-  tiltSensitivity: 0.5,
+  tiltSensitivity: 0.2,
   tiltOffset: 0,
   trackColor: 'black',
   assist: false,
@@ -101,7 +101,7 @@ export function defaultSave(): SaveData {
     ball: 'standard',
     ownedCostumes: [],
     costume: { ...DEFAULT_COSTUME },
-    flags: { a2hsShown: false, hintRopes: false, hintTilt: false },
+    flags: { a2hsShown: false, hintRopes: false, hintTilt: false, tiltLow: true },
   };
 }
 
