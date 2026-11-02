@@ -267,44 +267,86 @@ export class Props {
       });
     }
 
-    // Dönen kollar: koyu göbek, turuncu kollar
-    const bladeMat = matte('#F0A060', { roughness: 0.5, emissive: '#4A2410', emissiveIntensity: 0.2 });
+    // Dönen kollar: zeminde süpürdüğü alan (soluk turuncu daire + kesikli sınır),
+    // kalın şeritli kol, arkasında hareket izi, krem kapaklı göbek
+    const bladeMat = matte(HAZARD, { roughness: 0.45, emissive: '#7A3410', emissiveIntensity: 0.35 });
     const capMat = matte('#FBF1E4', { roughness: 0.6 });
     const hubMat = new THREE.MeshStandardMaterial({ color: '#4A4F57', metalness: 0.6, roughness: 0.35, envMap, envMapIntensity: 0.8 });
     for (const a of L.arms ?? []) {
       const g = new THREE.Group();
-      g.position.set(lx(a.x), a.y * S, 0.17);
-      const rotor = new THREE.Group();
-      g.add(rotor);
+      g.position.set(lx(a.x), a.y * S, 0);
       const n = a.blades ?? 2;
       const len = a.length * S;
       const thick = ARM_HALF * 2 * S;
+      const reachR = len + thick / 2;
+      // Süpürülen alan
+      const zone = new THREE.Mesh(
+        new THREE.CircleGeometry(reachR, 64),
+        new THREE.MeshBasicMaterial({ color: HAZARD, transparent: true, opacity: 0.1, depthWrite: false }),
+      );
+      zone.position.z = 0.01;
+      g.add(zone);
+      const dashes = new THREE.Group();
+      const DN = 28;
+      for (let i = 0; i < DN; i++) {
+        const d = new THREE.Mesh(
+          new THREE.RingGeometry(reachR - 0.035, reachR, 6, 1, (i * Math.PI * 2) / DN, (Math.PI * 2) / DN / 2),
+          new THREE.MeshBasicMaterial({ color: '#F6B48A', transparent: true, opacity: 0.75, depthWrite: false }),
+        );
+        dashes.add(d);
+      }
+      dashes.position.z = 0.012;
+      g.add(dashes);
+      const rotor = new THREE.Group();
+      rotor.position.z = 0.2;
+      g.add(rotor);
+      const dir = Math.sign(a.speed) || 1;
+      const trailMat = new THREE.MeshBasicMaterial({ color: '#F6B48A', transparent: true, opacity: 0.28, depthWrite: false });
       for (let i = 0; i < n; i++) {
         const b = new THREE.Group();
         b.rotation.z = (i * Math.PI * 2) / n;
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(len, thick, 0.12), bladeMat);
+        // Hareket izi: kolun arkasında kalan soluk dilim
+        const span = 0.55;
+        const trail = new THREE.Mesh(new THREE.CircleGeometry(reachR, 24, dir > 0 ? -span : 0, span), trailMat);
+        trail.position.z = -0.18;
+        b.add(trail);
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(len, thick, 0.2), bladeMat);
         bar.position.x = len / 2;
         b.add(bar);
-        const tip = new THREE.Mesh(new THREE.CylinderGeometry(thick / 2, thick / 2, 0.12, 16), capMat);
+        // Krem uyarı bantları: dönüş daha kolay fark edilir
+        for (const f of [0.4, 0.7]) {
+          const band = new THREE.Mesh(new THREE.BoxGeometry(len * 0.12, thick * 1.02, 0.205), capMat);
+          band.position.x = len * f;
+          b.add(band);
+        }
+        const tip = new THREE.Mesh(new THREE.CylinderGeometry(thick / 2, thick / 2, 0.2, 20), capMat);
         tip.rotation.x = Math.PI / 2;
         tip.position.x = len;
         b.add(tip);
-        // İnce açık şerit: dönüşü daha görünür yapar
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(len * 0.5, thick * 0.3, 0.125), capMat);
-        stripe.position.x = len * 0.55;
-        b.add(stripe);
         rotor.add(b);
       }
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(ARM_HUB_R * S, ARM_HUB_R * S * 1.15, 0.26, 24), hubMat);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(ARM_HUB_R * S, ARM_HUB_R * S * 1.15, 0.5, 24), hubMat);
       hub.rotation.x = Math.PI / 2;
+      hub.position.z = 0.2;
       g.add(hub);
-      g.traverse((o) => ((o as THREE.Mesh).isMesh ? (o.castShadow = true) : null));
+      const cap = new THREE.Mesh(new THREE.CircleGeometry(ARM_HUB_R * S * 0.55, 24), bladeMat);
+      cap.position.z = 0.452;
+      g.add(cap);
+      for (const o of [hub, cap, rotor]) o.traverse((m) => ((m as THREE.Mesh).isMesh && m !== zone ? (m.castShadow = true) : null));
+      rotor.traverse((m) => ((m as THREE.Mesh).material === trailMat ? (m.castShadow = false) : null));
       this.group.add(g);
-      this.anims.push({ update: (_t, obs) => (rotor.rotation.z = armAngle(a, obs)) });
+      this.anims.push({
+        update: (time, obs) => {
+          rotor.rotation.z = armAngle(a, obs);
+          dashes.rotation.z = time * 0.25 * dir;
+        },
+      });
     }
 
-    // Fırlatıcılar: şeritli yuvarlak tabla, uyarıda titrer ve parlar, sonra fırlar
+    // Fırlatıcılar: yay üstünde şeritli tabla. Uyarıda yay sıkışır ve titrer,
+    // sonra tabla yayla fırlar (biraz fazla çıkıp sallanır), inerken de yaylanır.
     const padTop = popperTexture();
+    const springMat = new THREE.MeshStandardMaterial({ color: '#E6EAEF', metalness: 0.5, roughness: 0.3, envMap, envMapIntensity: 1, emissive: '#FFFFFF', emissiveIntensity: 0.18 });
     for (const p of L.poppers ?? []) {
       const g = new THREE.Group();
       g.position.set(lx(p.x), p.y * S, 0);
@@ -320,20 +362,48 @@ export class Props {
       pad.add(top);
       pad.traverse((o) => ((o as THREE.Mesh).isMesh ? (o.castShadow = true) : null));
       g.add(pad);
-      const piston = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.35, R * 0.35, 1, 16), hubMat);
-      piston.rotation.x = Math.PI / 2;
-      g.add(piston);
+      // Yay halkaları: kamera neredeyse karşıdan baktığı için tabla çıkarken
+      // ekranda biraz yukarı kayar; halkalar alttan merdiven gibi görünür.
+      const coils: THREE.Mesh[] = [];
+      const NC = 4;
+      for (let i = 0; i < NC; i++) {
+        const c = new THREE.Mesh(new THREE.TorusGeometry(R * 0.85, 0.04, 8, 36), springMat);
+        c.castShadow = true;
+        g.add(c);
+        coils.push(c);
+      }
       this.group.add(g);
       const st: PopperState = { lift: 0, warn: 0, active: false };
+      let h = 0;
+      let v = 0;
+      let last = -1;
       this.anims.push({
         update: (time, obs) => {
           popperState(p, obs, st);
+          const dt = last < 0 ? 0 : Math.min(0.05, Math.max(0, time - last));
+          last = time;
+          // Uyarıda yay sıkışır (hedef eksi), çıkışta yay hızla açılır
+          const target = st.active ? st.lift : -0.35 * st.warn;
+          const K = st.active ? 260 : 190;
+          const C = st.active ? 9 : 7;
+          v += (-K * (h - target) - C * v) * dt;
+          h += v * dt;
+          if (dt === 0) h = target;
           const shake = st.warn > 0 ? Math.sin(time * 70) * 0.012 * st.warn : 0;
-          const z = 0.04 + st.warn * 0.03 + shake + st.lift * 0.62;
-          pad.position.z = z;
-          piston.scale.y = Math.max(0.001, z - 0.02);
-          piston.position.z = (z - 0.02) / 2;
-          piston.visible = z > 0.08;
+          const lift = Math.max(-0.4, h);
+          const up = Math.max(0, lift);
+          const z = 0.06 + up * 0.7;
+          // Sahte bakış açısı: yükselen tabla büyür ve ekranda yukarı kayar
+          const sc = 1 + up * 0.32 + Math.min(0, lift) * 0.12;
+          pad.position.set(shake, up * R * 1.3, z);
+          pad.scale.setScalar(sc);
+          for (let i = 0; i < NC; i++) {
+            const f = (i + 1) / (NC + 1);
+            const c = coils[i];
+            c.position.set(shake * f, up * R * 1.3 * f, 0.03 + (z - 0.03) * f);
+            c.scale.setScalar(1 + up * 0.32 * f);
+            c.visible = up > 0.04;
+          }
           const glow = st.active ? 0.5 : st.warn * (0.25 + 0.25 * Math.sin(time * 18));
           sideMat.emissiveIntensity = topMat.emissiveIntensity = glow;
         },

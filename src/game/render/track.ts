@@ -148,34 +148,30 @@ export class TrackSurface {
       ctx.fill();
     }
 
-    // Düşürme delikleri: gerçek delik gibi derin; karşı iç duvar ışık alır, turuncu ağız
+    // Düşürme delikleri: tahtada gerçek bir delik; içinden arkadaki manzara görünür.
+    // Üst iç kenarda tahtanın kalınlığı, çevresinde turuncu ağız ve uyarı halkası.
     for (const th of this.level.holes ?? []) {
-      if (th.y + th.r < y0 - 20 || th.y - th.r > y1 + 20) continue;
+      if (th.y + th.r < y0 - 30 || th.y - th.r > y1 + 30) continue;
       const hx = toX(th.x);
       const hy = toY(th.y);
       const r = th.r * ppu;
       ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      // Tahta kalınlığı: deliğin üst iç duvarı (hilal)
+      ctx.save();
       ctx.beginPath();
       ctx.arc(hx, hy, r, 0, Math.PI * 2);
       ctx.clip();
-      const g = ctx.createRadialGradient(hx, hy + r * 0.25, r * 0.05, hx, hy, r * 1.05);
-      g.addColorStop(0, '#020203');
-      g.addColorStop(0.7, '#0B0A0C');
-      g.addColorStop(1, '#1C1512');
-      ctx.fillStyle = g;
-      ctx.fillRect(hx - r, hy - r, r * 2, r * 2);
-      // Üstteki iç duvar (aşağı bakan yüz) turuncu ışığı yansıtır
-      const wall = ctx.createLinearGradient(hx, hy - r, hx, hy - r * 0.15);
-      wall.addColorStop(0, 'rgba(238, 138, 78, 0.75)');
-      wall.addColorStop(0.45, 'rgba(120, 58, 32, 0.45)');
-      wall.addColorStop(1, 'rgba(10, 8, 8, 0)');
-      ctx.fillStyle = wall;
+      ctx.fillStyle = pal.edge;
       ctx.beginPath();
-      ctx.arc(hx, hy - r, r * 1.02, 0, Math.PI);
-      ctx.arc(hx, hy - r * 0.35, r * 0.9, Math.PI, 0, true);
+      ctx.arc(hx, hy, r, Math.PI, 0);
+      ctx.arc(hx, hy + r * 0.16, r, 0, Math.PI, true);
       ctx.fill();
       ctx.restore();
-      // Turuncu ağız ve çevresinde uyarı halkası
       ctx.lineWidth = 7 * ppu;
       ctx.strokeStyle = '#EE8A4E';
       ctx.beginPath();
