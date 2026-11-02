@@ -3,6 +3,7 @@ import { physics, resetPhysics } from '../src/config/physics';
 import { ballCenter, barFrame, equilibriumTilt, localAngle, sagDepth } from '../src/game/physics/bar';
 import { Simulation, effectiveCheckpoints } from '../src/game/physics/sim';
 import type { LevelData } from '../src/game/levels/types';
+import { LEVELS } from '../src/game/levels';
 
 const straight = (over: Partial<LevelData> = {}): LevelData => ({
   id: 't', name: 't', world: 1, height: 3000, boardWidth: 1000,
@@ -210,5 +211,49 @@ describe('dış kuvvetler', () => {
     run(sim, 1.2);
     sim.step();
     expect(sim.extAccel).toBe(0);
+  });
+});
+
+describe('kontrol noktası çizgisi', () => {
+  test('çizilen kesikli çizginin her yerinden geçen top sayılır (yatık yollarda da)', () => {
+    for (const L of LEVELS) {
+      for (const assist of [false, true]) {
+        const sim = new Simulation(L, { ball: 'standard', assist });
+        sim.checkpoints.forEach((cy, i) => {
+          const [l, r] = sim.track.spanAt(cy);
+          for (let k = 0; k <= 10; k++) {
+            const x = l + ((r - l) * k) / 10;
+            expect(sim.onCheckpointLine(i, x), `${L.id} ${assist ? 'yardım ' : ''}y=${cy} x=${Math.round(x)}`).toBe(true);
+          }
+          // Çizginin epey dışı sayılmaz (çataldaki öbür yol gibi)
+          expect(sim.onCheckpointLine(i, l - 120)).toBe(false);
+          expect(sim.onCheckpointLine(i, r + 120)).toBe(false);
+        });
+      }
+    }
+  });
+
+  test('top yatık yolda çizginin kenarından geçince kontrol noktası alınır', () => {
+    // Çapraz yol: kontrol noktası yolun ortasından uzakta, çizginin kenarında geçilir
+    const L = straight({
+      road: [{ x: 100, y: 0, w: 260 }, { x: 900, y: 400, w: 260 }, { x: 900, y: 2900, w: 260 }],
+      checkpoints: [200],
+    });
+    const sim = new Simulation(L, { ball: 'standard', assist: false });
+    const [l] = sim.track.spanAt(200);
+    const cx = sim.track.centerXAt(200);
+    const hw = sim.track.widthAt(200) / 2 + physics.ballRadius;
+    // Eski kural bu noktayı saymıyordu
+    const x = Math.max(l + 10, cx - hw - 40);
+    expect(x).toBeLessThan(cx - hw);
+    expect(x).toBeGreaterThan(l);
+    sim.placeBall(x, 190);
+    let got = false;
+    for (let i = 0; i < 30 && !got; i++) {
+      sim.setTiltLift(0, 3);
+      sim.step();
+      for (const e of sim.drainEvents()) if (e.type === 'checkpoint') got = true;
+    }
+    expect(got).toBe(true);
   });
 });

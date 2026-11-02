@@ -69,6 +69,8 @@ export class Simulation {
   readonly width: number;
   readonly opts: SimOptions;
   readonly checkpoints: number[];
+  /** Her kontrol noktası çizgisinin ana yol üzerindeki sol ve sağ ucu (ekranda çizilen kesikli çizgi) */
+  readonly checkpointSpans: [number, number][];
 
   // Çubuk
   yL = 0;
@@ -113,6 +115,7 @@ export class Simulation {
     this.width = level.boardWidth;
     this.track = new Track(level);
     this.checkpoints = effectiveCheckpoints(level, opts.assist);
+    this.checkpointSpans = this.checkpoints.map((cy) => this.track.spanAt(cy));
     this.starsCollected = (level.stars ?? []).map(() => false);
     this.near = { dist: 0, halfWidth: 0, cx: 0, cy: 0, line: this.track.main };
 
@@ -452,12 +455,23 @@ export class Simulation {
     this.prevBallY = by;
     for (let i = this.checkpoints.length - 1; i > this.lastCheckpoint; i--) {
       const cy = this.checkpoints[i];
-      if (prevY < cy && by >= cy && Math.abs(bx - this.track.centerXAt(cy)) <= this.track.widthAt(cy) / 2 + physics.ballRadius) {
+      if (prevY < cy && by >= cy && this.onCheckpointLine(i, bx)) {
         this.lastCheckpoint = i;
         this.events.push({ type: 'checkpoint', index: i });
         break;
       }
     }
+  }
+
+  /**
+   * Top kontrol noktası çizgisini bu x noktasında geçerse sayılır mı?
+   * Çizginin tamamı (yolun o yükseklikteki bütün genişliği) geçerli; yatık yolda
+   * bu, yolun dik genişliğinden çok daha geniştir.
+   */
+  onCheckpointLine(i: number, x: number): boolean {
+    const [l, r] = this.checkpointSpans[i];
+    const pad = physics.ballRadius * 0.5;
+    return x >= l - pad && x <= r + pad;
   }
 
   private fall(cause: FallCause): void {
