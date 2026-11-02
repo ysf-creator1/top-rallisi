@@ -25,6 +25,7 @@ const SLIDERS: [keyof PhysicsConfig, number, number, number][] = [
   ['vacuumForce', 0, 3000, 50],
   ['windForce', 0, 3000, 50],
   ['magnetForce', 0, 3000, 50],
+  ['armContact', 0.3, 1.2, 0.05],
   ['starPickupRadius', 20, 160, 5],
 ];
 
@@ -173,8 +174,8 @@ export class DevPanel {
               return;
             }
             const r = validateLevel(data);
-            // Önizleme sadece var olan dünyaların görünümüyle (1–3)
-            if (r.ok && ![1, 2, 3].includes((data as LevelData).world)) r.errors.push('world 1, 2 ya da 3 olmalı');
+            // Önizleme sadece var olan dünyaların görünümüyle (1–4)
+            if (r.ok && ![1, 2, 3, 4].includes((data as LevelData).world)) r.errors.push('world 1–4 olmalı');
             if (r.errors.length) {
               err.textContent = r.errors.join('\n');
               return;

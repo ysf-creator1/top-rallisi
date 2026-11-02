@@ -10,7 +10,9 @@
 // Virajın sertliğine göre rotadaki hızı ayarlar.
 
 import { BALL_TRAITS, physics } from '../config/physics';
+import type { LevelData } from './levels/types';
 import { sagSlope } from './physics/bar';
+import { ARM_HALF, ARM_HUB_R, armHits, obstacleTime, popperState } from './physics/obstacles';
 import type { Simulation } from './physics/sim';
 import type { Polyline } from './physics/track';
 
@@ -60,7 +62,7 @@ function nearestIndex(line: Polyline, x: number, y: number): number {
   return bi;
 }
 
-export function buildRoute(lines: Polyline[], preferShort: boolean): Route {
+export function buildRoute(lines: Polyline[], preferShort: boolean, level?: LevelData): Route {
   const main = lines[0];
   const xs: number[] = [];
   const ys: number[] = [];
@@ -86,9 +88,108 @@ export function buildRoute(lines: Polyline[], preferShort: boolean): Route {
     cur = s.i1;
   }
   take(main, cur, main.count - 1);
-  const len = [0];
-  for (let i = 1; i < xs.length; i++) len.push(len[i - 1] + Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]));
+  const lenOf = () => {
+    const len = [0];
+    for (let i = 1; i < xs.length; i++) len.push(len[i - 1] + Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]));
+    return len;
+  };
+  let len = lenOf();
+  if (level && (level.holes?.length || level.arms?.length)) {
+    avoidSpots(xs, ys, ws, len, level);
+    len = lenOf();
+  }
   return { xs, ys, ws, len, total: len[len.length - 1] };
+}
+
+/**
+ * Rotayı deliklerin ve dönen kol göbeklerinin yanından geçecek şekilde yana kaydırır.
+ * Kayma yumuşak bir tümsek gibi açılıp kapanır; ws, o bölgede kalan şerit genişliği olur.
+ */
+function avoidSpots(xs: number[], ys: number[], ws: number[], len: number[], L: LevelData): void {
+  const n = xs.length;
+  const nxs = new Float64Array(n);
+  const nys = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - 2);
+    const b = Math.min(n - 1, i + 2);
+    const tx = xs[b] - xs[a];
+    const ty = ys[b] - ys[a];
+    const tl = Math.hypot(tx, ty) || 1;
+    nxs[i] = -ty / tl;
+    nys[i] = tx / tl;
+  }
+  const contact = physics.ballRadius * physics.armContact;
+  const spots = [
+    ...(L.holes ?? []).map((h) => ({ x: h.x, y: h.y, keep: h.r + 36, narrow: true })),
+    // Kolda şerit daraltılmaz: bot kolun içinde yavaşlamasın
+    ...(L.arms ?? []).map((a) => ({ x: a.x, y: a.y, keep: ARM_HUB_R + contact + 30, narrow: false })),
+  ];
+  const off = new Float64Array(n);
+  const lane = new Float64Array(n).fill(Infinity);
+  for (const sp of spots) {
+    let j = 0;
+    let bd = Infinity;
+    for (let i = 0; i < n; i++) {
+      const d = (xs[i] - sp.x) ** 2 + (ys[i] - sp.y) ** 2;
+      if (d < bd) {
+        bd = d;
+        j = i;
+      }
+    }
+    const o = (sp.x - xs[j]) * nxs[j] + (sp.y - ys[j]) * nys[j];
+    const bound = ws[j] / 2 - 26;
+    let p = 0;
+    if (Math.abs(o) < sp.keep) {
+      const cands = [o + sp.keep, o - sp.keep].sort((u, v) => Math.abs(u) - Math.abs(v));
+      p = cands.find((c) => Math.abs(c) <= bound) ?? Math.max(-bound, Math.min(bound, cands[0]));
+    }
+    const laneHalf = Math.max(24, Math.min(ws[j] / 2 - Math.abs(p), Math.abs(p - o) - (sp.keep - 36)));
+    const plateau = sp.keep + 40;
+    const ramp = 230;
+    for (let i = 0; i < n; i++) {
+      const ds = Math.abs(len[i] - len[j]);
+      if (ds > plateau + ramp) continue;
+      const k = ds <= plateau ? 1 : 1 - (ds - plateau) / ramp;
+      const e = k * k * (3 - 2 * k);
+      if (Math.abs(p * e) > Math.abs(off[i])) off[i] = p * e;
+      if (ds <= plateau && sp.narrow) lane[i] = Math.min(lane[i], laneHalf);
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    // Kayma yolun içinde kalsın (virajda normal dışarı bakabilir)
+    const lim = Math.max(0, ws[i] / 2 - 30);
+    off[i] = Math.max(-lim, Math.min(lim, off[i]));
+    xs[i] += nxs[i] * off[i];
+    ys[i] += nys[i] * off[i];
+    if (lane[i] < Infinity) ws[i] = Math.min(ws[i], lane[i] * 2);
+  }
+}
+
+/** Zamanlı engel kapısı: rotanın [sA, sB] aralığı bu engelin erişiminde */
+interface Gate {
+  sA: number;
+  sB: number;
+  /** Aralıktaki rota örnekleri */
+  pts: { s: number; x: number; y: number }[];
+  hit: (x: number, y: number, t: number) => boolean;
+  /** Geçmeye karar verildi */
+  go: boolean;
+}
+
+function buildGates(route: Route, L: LevelData): Gate[] {
+  const gates: Gate[] = [];
+  const contact = physics.ballRadius * physics.armContact;
+  const tmp = { lift: 0, warn: 0, active: false };
+  const make = (cx: number, cy: number, zone: number, hit: Gate['hit']) => {
+    const pts: Gate['pts'] = [];
+    for (let i = 0; i < route.xs.length; i++) {
+      if (Math.hypot(route.xs[i] - cx, route.ys[i] - cy) < zone) pts.push({ s: route.len[i], x: route.xs[i], y: route.ys[i] });
+    }
+    if (pts.length) gates.push({ sA: pts[0].s, sB: pts[pts.length - 1].s, pts, hit, go: false });
+  };
+  for (const a of L.arms ?? []) make(a.x, a.y, a.length + ARM_HALF + contact + 25, (x, y, t) => armHits(a, x, y, t, 10));
+  for (const p of L.poppers ?? []) make(p.x, p.y, p.r + 25, (x, y, t) => Math.hypot(x - p.x, y - p.y) < p.r + 18 && popperState(p, t, tmp).active);
+  return gates.sort((a, b) => a.sA - b.sA);
 }
 
 interface Pt {
@@ -106,6 +207,7 @@ export class Autopilot {
   private sBall = 0;
   private vs = 0;
   private lastPhase = '';
+  private gates: Gate[] = [];
   private idx = 0;
   private p0: Pt = { x: 0, y: 0, w: 0 };
   private p1: Pt = { x: 0, y: 0, w: 0 };
@@ -145,11 +247,36 @@ export class Autopilot {
     return bs;
   }
 
+  /**
+   * Şimdi yola çıkarsa kapıdan çarpmadan geçer mi? Topun şimdiki hızından
+   * vCap hızına ivmelenir varsayımıyla her rota noktasına varış zamanını tahmin eder,
+   * bir zaman payıyla engelin o anki durumuna bakar.
+   */
+  private clearAhead(sim: Simulation, g: Gate, vCap: number): boolean {
+    const a = 600;
+    const v0 = Math.min(vCap, Math.max(0, this.vs));
+    const tAcc = (vCap - v0) / a;
+    const dAcc = v0 * tAcc + 0.5 * a * tAcc * tAcc;
+    const arrive = (d: number) => {
+      if (d <= 0) return 0;
+      if (d < dAcc) return (-v0 + Math.sqrt(v0 * v0 + 2 * a * d)) / a;
+      return tAcc + (d - dAcc) / vCap;
+    };
+    for (const p of g.pts) {
+      const t = arrive(p.s - this.sBall + 30);
+      for (let k = -2; k <= 5; k++) {
+        if (g.hit(p.x, p.y, obstacleTime(sim.simTime + t + k * 0.12, sim.opts.assist))) return false;
+      }
+    }
+    return true;
+  }
+
   /** Her fizik adımından önce çağrılır. */
   control(sim: Simulation): void {
     const t = this.tuning;
     if (this.routeSim !== sim || !this.route) {
-      this.route = buildRoute(sim.track.lines, t.preferShort);
+      this.route = buildRoute(sim.track.lines, t.preferShort, sim.level);
+      this.gates = buildGates(this.route, sim.level);
       this.routeSim = sim;
       this.s = this.sBall = 0;
       this.vs = 0;
@@ -173,6 +300,7 @@ export class Autopilot {
       // Yeniden doğunca rotadaki yeri baştan bul
       this.sBall = this.locate(sim.ballX, sim.ballY, 0, route.total, 8);
       this.s = this.sBall;
+      for (const g of this.gates) if (g.sA > this.sBall) g.go = false;
     } else {
       this.sBall = this.locate(sim.ballX, yLevel, this.sBall - 200, this.sBall + 260, 6);
     }
@@ -198,10 +326,24 @@ export class Autopilot {
     if (maxCurvX > 1e-6) vsWant = Math.min(vsWant, Math.sqrt(t.lateralBudget / maxCurvX));
     if (maxSlopeY > 1e-3) vsWant = Math.min(vsWant, (physics.endSpeed * t.liftScale) / maxSlopeY);
     vsWant *= Math.max(0.05, Math.min(1, 1 - err / (halfW * 0.9)));
+    // Zamanlı engel: güvenli an gelene kadar önünde bekle
+    let holdS = Infinity;
+    const gate = this.gates.find((g) => g.sB > this.sBall);
+    if (gate && this.sBall > gate.sA) gate.go = true;
+    else if (gate && gate.sA - this.sBall < 320) {
+      // Kapıya girene kadar her adımda yeniden bak: top yavaş kalırsa vazgeçip bekler
+      gate.go = this.clearAhead(sim, gate, Math.min(180, Math.max(100, vsWant * 0.85)));
+      if (!gate.go) {
+        holdS = gate.sA - 60;
+        // Bekleme yerinde durabilecek hızda yaklaş
+        vsWant = Math.min(vsWant, 25 + Math.sqrt(2 * 220 * Math.max(0, holdS - this.sBall)));
+      }
+    }
     const acc = 900 * dt;
     this.vs += Math.max(-acc * 3, Math.min(acc, vsWant - this.vs));
     // Referans topun en fazla biraz önünde koşsun
-    this.s = Math.min(this.s + this.vs * dt, this.sBall + 50, route.total);
+    this.s = Math.min(this.s + this.vs * dt, this.sBall + 50, route.total, holdS);
+    if (this.s >= holdS - 1) this.vs = 0;
     this.s = Math.max(this.s, this.sBall - 30);
 
     // Referansın konumu, hızı ve ivmesi

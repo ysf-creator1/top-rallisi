@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { t } from '../../i18n';
 import { magnetActive } from '../physics/sim';
+import { ARM_HALF, ARM_HUB_R, armAngle, popperState, type PopperState } from '../physics/obstacles';
 import type { LevelData } from '../levels/types';
 import type { Track } from '../physics/track';
 import { S, canvasTexture, makeCanvas, matte, starShape } from './common';
@@ -38,7 +39,29 @@ interface StarProp {
 }
 
 interface Anim {
-  update(time: number): void;
+  /** time: görüntü saati, obs: engel saati (fizikle aynı) */
+  update(time: number, obs: number): void;
+}
+
+const HAZARD = '#EE8A4E';
+
+/** Fırlatıcının üst yüzü: turuncu-krem uyarı şeritleri */
+function popperTexture(): THREE.CanvasTexture {
+  const c = makeCanvas(256, 256);
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#FBF1E4';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.save();
+  ctx.translate(128, 128);
+  ctx.rotate(-Math.PI / 4);
+  ctx.fillStyle = HAZARD;
+  for (let x = -200; x < 200; x += 56) ctx.fillRect(x, -200, 28, 400);
+  ctx.restore();
+  ctx.fillStyle = '#3B3F45';
+  ctx.beginPath();
+  ctx.arc(128, 128, 22, 0, Math.PI * 2);
+  ctx.fill();
+  return canvasTexture(c);
 }
 
 export class Props {
@@ -221,6 +244,102 @@ export class Props {
       });
     }
 
+    // Düşürme delikleri: turuncu ağız ve dışa doğru yavaşça yayılan uyarı halkası
+    for (const th of L.holes ?? []) {
+      const g = new THREE.Group();
+      g.position.set(lx(th.x), th.y * S, 0.02);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(th.r * S + 0.02, 0.04, 10, 48), matte(HAZARD, { roughness: 0.55, emissive: '#5A2A10', emissiveIntensity: 0.3 }));
+      rim.castShadow = true;
+      g.add(rim);
+      const pulse = new THREE.Mesh(
+        new THREE.RingGeometry(0.94, 1, 48),
+        new THREE.MeshBasicMaterial({ color: '#F6B48A', transparent: true, opacity: 0, depthWrite: false }),
+      );
+      g.add(pulse);
+      this.group.add(g);
+      const R0 = th.r * S + 0.05;
+      this.anims.push({
+        update: (time) => {
+          const p = (time * 0.6 + th.x * 0.001) % 1;
+          pulse.scale.setScalar(R0 + p * 0.45);
+          (pulse.material as THREE.MeshBasicMaterial).opacity = (1 - p) * 0.45;
+        },
+      });
+    }
+
+    // Dönen kollar: koyu göbek, turuncu kollar
+    const bladeMat = matte('#F0A060', { roughness: 0.5, emissive: '#4A2410', emissiveIntensity: 0.2 });
+    const capMat = matte('#FBF1E4', { roughness: 0.6 });
+    const hubMat = new THREE.MeshStandardMaterial({ color: '#4A4F57', metalness: 0.6, roughness: 0.35, envMap, envMapIntensity: 0.8 });
+    for (const a of L.arms ?? []) {
+      const g = new THREE.Group();
+      g.position.set(lx(a.x), a.y * S, 0.17);
+      const rotor = new THREE.Group();
+      g.add(rotor);
+      const n = a.blades ?? 2;
+      const len = a.length * S;
+      const thick = ARM_HALF * 2 * S;
+      for (let i = 0; i < n; i++) {
+        const b = new THREE.Group();
+        b.rotation.z = (i * Math.PI * 2) / n;
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(len, thick, 0.12), bladeMat);
+        bar.position.x = len / 2;
+        b.add(bar);
+        const tip = new THREE.Mesh(new THREE.CylinderGeometry(thick / 2, thick / 2, 0.12, 16), capMat);
+        tip.rotation.x = Math.PI / 2;
+        tip.position.x = len;
+        b.add(tip);
+        // İnce açık şerit: dönüşü daha görünür yapar
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(len * 0.5, thick * 0.3, 0.125), capMat);
+        stripe.position.x = len * 0.55;
+        b.add(stripe);
+        rotor.add(b);
+      }
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(ARM_HUB_R * S, ARM_HUB_R * S * 1.15, 0.26, 24), hubMat);
+      hub.rotation.x = Math.PI / 2;
+      g.add(hub);
+      g.traverse((o) => ((o as THREE.Mesh).isMesh ? (o.castShadow = true) : null));
+      this.group.add(g);
+      this.anims.push({ update: (_t, obs) => (rotor.rotation.z = armAngle(a, obs)) });
+    }
+
+    // Fırlatıcılar: şeritli yuvarlak tabla, uyarıda titrer ve parlar, sonra fırlar
+    const padTop = popperTexture();
+    for (const p of L.poppers ?? []) {
+      const g = new THREE.Group();
+      g.position.set(lx(p.x), p.y * S, 0);
+      const R = p.r * S;
+      const pad = new THREE.Group();
+      const sideMat = matte(HAZARD, { roughness: 0.5, emissive: '#FF8A3A', emissiveIntensity: 0 });
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.08, 40), sideMat);
+      body.rotation.x = Math.PI / 2;
+      pad.add(body);
+      const topMat = new THREE.MeshStandardMaterial({ map: padTop, roughness: 0.6, emissive: '#FF8A3A', emissiveIntensity: 0 });
+      const top = new THREE.Mesh(new THREE.CircleGeometry(R * 0.96, 40), topMat);
+      top.position.z = 0.041;
+      pad.add(top);
+      pad.traverse((o) => ((o as THREE.Mesh).isMesh ? (o.castShadow = true) : null));
+      g.add(pad);
+      const piston = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.35, R * 0.35, 1, 16), hubMat);
+      piston.rotation.x = Math.PI / 2;
+      g.add(piston);
+      this.group.add(g);
+      const st: PopperState = { lift: 0, warn: 0, active: false };
+      this.anims.push({
+        update: (time, obs) => {
+          popperState(p, obs, st);
+          const shake = st.warn > 0 ? Math.sin(time * 70) * 0.012 * st.warn : 0;
+          const z = 0.04 + st.warn * 0.03 + shake + st.lift * 0.62;
+          pad.position.z = z;
+          piston.scale.y = Math.max(0.001, z - 0.02);
+          piston.position.z = (z - 0.02) / 2;
+          piston.visible = z > 0.08;
+          const glow = st.active ? 0.5 : st.warn * (0.25 + 0.25 * Math.sin(time * 18));
+          sideMat.emissiveIntensity = topMat.emissiveIntensity = glow;
+        },
+      });
+    }
+
     // Tabelalar (kısa yol / güvenli yol)
     for (const s of L.signs ?? []) this.group.add(sign(t(s.text), s.text === 'sign.short', lx(s.x), s.y * S));
   }
@@ -240,8 +359,8 @@ export class Props {
     });
   }
 
-  update(time: number): void {
-    for (const a of this.anims) a.update(time);
+  update(time: number, obs = time): void {
+    for (const a of this.anims) a.update(time, obs);
     for (const s of this.stars) {
       if (s.collectedAt === -2) continue;
       if (s.collectedAt >= 0) {

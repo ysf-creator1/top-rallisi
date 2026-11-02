@@ -4,6 +4,7 @@
 import { ASSIST, BALL_TRAITS, WORLD_VACUUM, physics, type BallType } from '../../config/physics';
 import type { LevelData } from '../levels/types';
 import { barFrame, barPoint, equilibriumTilt, localAngle, type BarFrame } from './bar';
+import { hitObstacle, obstacleTime, safeSpot, type FallCause } from './obstacles';
 import { Track, type NearestResult, type Polyline } from './track';
 
 export type SimPhase = 'playing' | 'falling' | 'finishing' | 'finished';
@@ -12,7 +13,7 @@ export type SimEvent =
   | { type: 'start' }
   | { type: 'star'; index: number }
   | { type: 'checkpoint'; index: number }
-  | { type: 'fall' }
+  | { type: 'fall'; cause: FallCause }
   | { type: 'respawn' }
   | { type: 'finish'; time: number }
   | { type: 'wall'; strength: number };
@@ -31,8 +32,10 @@ export function effectiveCheckpoints(level: LevelData, assist: boolean): number[
   if (!assist || base.length >= ASSIST.minCheckpoints) return base;
   const top = level.finishHole.y;
   const start = level.road[0].y;
-  const main = new Track({ ...level, branches: [] }).main;
-  const once = (y: number) => crossingsOf(main, y) === 1 && crossingsOf(main, y - 60) === 1 && crossingsOf(main, y + 60) === 1;
+  const mt = new Track({ ...level, branches: [] });
+  const main = mt.main;
+  const once = (y: number) =>
+    crossingsOf(main, y) === 1 && crossingsOf(main, y - 60) === 1 && crossingsOf(main, y + 60) === 1 && safeSpot(level, mt.centerXAt(y), y);
   const n = ASSIST.minCheckpoints + 1;
   const out: number[] = [];
   for (let i = 1; i < n; i++) {
@@ -93,6 +96,8 @@ export class Simulation {
   finishTime = 0;
   falls = 0;
   lastCheckpoint = -1;
+  /** Son düşmenin nedeni ve yönü (görüntü için): delikte (x, y) deliğin merkezi, (dx, dy) savrulma yönü */
+  fallInfo: { cause: FallCause; x: number; y: number; dx: number; dy: number } = { cause: 'edge', x: 0, y: 0, dx: 0, dy: 0 };
   private prevBallY = -Infinity;
   readonly starsCollected: boolean[];
   events: SimEvent[] = [];
@@ -387,11 +392,16 @@ export class Simulation {
       return;
     }
 
+    // Engeller: delik, fırlatıcı, dönen kol
+    const hazard = hitObstacle(L, bx, by, obstacleTime(this.simTime, this.opts.assist));
+    if (hazard) {
+      this.fall(hazard);
+      return;
+    }
+
     // Düşme kuralı (tarif 3.3)
     if (!this.track.isOnTrack(bx, by)) {
-      this.falls++;
-      this.setPhase('falling');
-      this.events.push({ type: 'fall' });
+      this.fall('edge');
       return;
     }
 
@@ -408,6 +418,39 @@ export class Simulation {
         break;
       }
     }
+  }
+
+  private fall(cause: FallCause): void {
+    const fi = this.fallInfo;
+    const bx = this.ballX;
+    const by = this.ballY;
+    fi.cause = cause;
+    fi.x = bx;
+    fi.y = by;
+    fi.dx = this.v < 0 ? -1 : 1;
+    fi.dy = 0;
+    const L = this.level;
+    if (cause === 'hole') {
+      for (const h of L.holes ?? []) if (Math.hypot(bx - h.x, by - h.y) < h.r) ((fi.x = h.x), (fi.y = h.y));
+    } else if (cause === 'arm') {
+      // Kolun o noktadaki hareket yönü: göbek etrafında teğet
+      let best = Infinity;
+      for (const a of L.arms ?? []) {
+        const d = Math.hypot(bx - a.x, by - a.y);
+        if (d >= best) continue;
+        best = d;
+        const s = Math.sign(a.speed) || 1;
+        const rx = (bx - a.x) / Math.max(1, d);
+        const ry = (by - a.y) / Math.max(1, d);
+        fi.dx = -ry * s;
+        fi.dy = rx * s;
+      }
+    } else if (cause === 'pop') {
+      fi.dx = bx < 500 ? 1 : -1;
+    }
+    this.falls++;
+    this.setPhase('falling');
+    this.events.push({ type: 'fall', cause });
   }
 
   private respawn(): void {

@@ -9,6 +9,7 @@ import { physics, type BallType } from '../../config/physics';
 import { THEMES, type SceneTheme, type ThemeId } from '../../config/theme';
 import type { Costume } from '../../save/schema';
 import type { LevelData } from '../levels/types';
+import type { FallCause } from '../physics/obstacles';
 import type { Track } from '../physics/track';
 import { BallView } from './ball';
 import { BAR_Z, GROUND_Y, LEAN, S, canvasTexture, disposeTree, makeCanvas, type Quality } from './common';
@@ -40,13 +41,18 @@ export interface RenderState {
   ballY: number;
   roll: number;
   ballScale: number;
-  /** Düşme animasyonu: t 0→1, dir topun kaydığı yön (−1 sol, +1 sağ); düşmüyorsa null */
-  fall?: { t: number; dir: number } | null;
+  /**
+   * Düşme animasyonu: t 0→1, dir topun kaydığı yön (−1 sol, +1 sağ); düşmüyorsa null.
+   * cause: neden düştü; delikte (x, y) deliğin merkezi, kolda (dx, dy) savrulma yönü.
+   */
+  fall?: { t: number; dir: number; cause?: FallCause; x?: number; y?: number; dx?: number; dy?: number } | null;
   /** Yeniden doğma: 0→1 (1 = bitti) */
   spawn?: number;
   ghost: { yL: number; yR: number; x: number; y: number; scale: number } | null;
   ropes: [RopeVisual, RopeVisual];
   time: number;
+  /** Engel saati (fizikle aynı; dönen kol ve fırlatıcı buna göre çizilir) */
+  obsTime?: number;
 }
 
 export interface LevelVisualOptions {
@@ -405,13 +411,42 @@ export class GameRenderer {
       let roll = st.roll;
       let sc = st.ballScale;
       const R = physics.ballRadius * S;
-      if (st.fall) {
+      const f = st.fall;
+      if (f && f.cause === 'hole' && f.x !== undefined && f.y !== undefined) {
+        // Deliğin ortasına kayar ve içine gömülür
+        const t = f.t;
+        const k = Math.min(1, t / 0.35);
+        const e = k * k * (3 - 2 * k);
+        x += ((f.x - 500) * S - x) * e;
+        y += (f.y * S - y) * e;
+        const sink = Math.max(0, (t - 0.25) / 0.75);
+        z = BAR_Z - sink * sink * 0.6;
+        sc *= Math.max(0, 1 - sink * 0.95);
+        roll += t * 3;
+      } else if (f && f.cause === 'pop') {
+        // Fırlatıcı topu öne ve yukarı fırlatır
+        const t = f.t;
+        x += f.dir * t * R * 2.5;
+        y += (t * 2.2 - t * t * 2.6) * R * 3;
+        z = BAR_Z + t * 3.2;
+        roll += f.dir * t * 8;
+        sc *= Math.min(1, (1 - t) / 0.3);
+      } else if (f && f.cause === 'arm' && f.dx !== undefined && f.dy !== undefined) {
+        // Kol topu çarptığı yöne savurur
+        const t = f.t;
+        const d = (t * 2 - t * t) * R * 5;
+        x += f.dx * d;
+        y += f.dy * d;
+        z = BAR_Z + Math.sin(t * Math.PI) * 0.5;
+        roll += t * 10 * (f.dx >= 0 ? 1 : -1);
+        sc *= Math.min(1, (1 - t) / 0.25);
+      } else if (f) {
         // Çubuktan geriye ve aşağı yumuşakça süzülür, hafifçe döner, küçülür
-        const t = st.fall.t;
+        const t = f.t;
         const e = t * t;
-        x += st.fall.dir * t * R * 1.2;
+        x += f.dir * t * R * 1.2;
         y -= e * R * 4;
-        roll += st.fall.dir * t * 2.4;
+        roll += f.dir * t * 2.4;
         sc = (1 - 0.65 * e) * Math.min(1, (1 - t) / 0.18);
         z = Math.max(0.05 + R * sc, BAR_Z - e * 0.4);
       } else if (st.spawn !== undefined && st.spawn < 1) {
@@ -430,7 +465,7 @@ export class GameRenderer {
     } else if (this.ghostBar && this.ghostBall) {
       this.ghostBar.group.visible = this.ghostBall.root.visible = false;
     }
-    this.props?.update(st.time);
+    this.props?.update(st.time, st.obsTime ?? st.time);
     this.updateRopes(st, dt);
   }
 

@@ -2,14 +2,34 @@ import { describe, expect, test } from 'vitest';
 import { runAutopilot } from '../src/game/autopilot';
 import { validateLevel } from '../src/game/levels/validate';
 import { Simulation } from '../src/game/physics/sim';
+import { Track } from '../src/game/physics/track';
 import { allLevels } from './helpers';
 
 const levels = allLevels();
 
 describe('etap JSON doğrulaması', () => {
-  test('Dünya 1–3: 30 etap, her dünyada 10', () => {
-    expect(levels.length).toBe(30);
-    for (const w of [1, 2, 3]) expect(levels.filter((l) => l.world === w).length).toBe(10);
+  test('Dünya 1–4: 40 etap, her dünyada 10', () => {
+    expect(levels.length).toBe(40);
+    for (const w of [1, 2, 3, 4]) expect(levels.filter((l) => l.world === w).length).toBe(10);
+  });
+
+  test('Dünya 4 etaplarında engeller var; ilk etapta sadece delik', () => {
+    const w4 = levels.filter((x) => x.world === 4);
+    expect(w4[0].holes?.length).toBeGreaterThan(0);
+    expect(w4[0].arms).toBeUndefined();
+    expect(w4[0].poppers).toBeUndefined();
+    expect(w4.some((l) => l.arms?.length)).toBe(true);
+    expect(w4.some((l) => l.poppers?.length)).toBe(true);
+    // Eski dünyalarda engel yok
+    for (const l of levels.filter((x) => x.world < 4)) expect(l.holes ?? l.arms ?? l.poppers).toBeUndefined();
+  });
+
+  test('engelin dibindeki kontrol noktası ve pist dışı delik yakalanır', () => {
+    const l = levels.find((x) => x.world === 4 && x.checkpoints?.length)!;
+    const cy = l.checkpoints![0];
+    const t = new Track(l);
+    expect(validateLevel({ ...l, holes: [...(l.holes ?? []), { x: t.centerXAt(cy), y: cy, r: 40 }] }).ok).toBe(false);
+    expect(validateLevel({ ...l, holes: [{ x: 5, y: 5, r: 40 }] }).ok).toBe(false);
   });
 
   test.each(levels.map((l) => [l.id, l] as const))('%s geçerli', (_id, level) => {

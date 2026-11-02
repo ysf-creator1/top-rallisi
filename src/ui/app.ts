@@ -1,7 +1,7 @@
 // Uygulama: ekranlar, oyun akışı, kayıt ve ödüller.
 
 import { ASSIST, type BallType } from '../config/physics';
-import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
+import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
 import { themeForWorld, trackHex, type ThemeId } from '../config/theme';
 import { parseGhost, type GhostData } from '../game/ghost';
 import { KeyboardInput } from '../game/input/keyboard';
@@ -322,7 +322,10 @@ export class App {
   worldUnlocked(world: number): boolean {
     if (this.dev?.unlockAll) return true;
     if (!PLAYABLE_WORLDS.includes(world)) return false;
-    return this.totalStars() >= (WORLD_UNLOCK[world] ?? Infinity);
+    if (this.totalStars() >= (WORLD_UNLOCK[world] ?? Infinity)) return true;
+    // Dünya 4: önceki dünyanın bütün etaplarını bitiren de açar
+    const prev = levelsOfWorld(world - 1);
+    return UNLOCK_BY_COMPLETION.includes(world) && prev.length > 0 && prev.every((l) => this.save.data.levels[l.id]?.completed);
   }
 
   levelUnlocked(level: LevelData): boolean {
@@ -383,7 +386,11 @@ export class App {
         onStart: () => this.hud.hideHint(),
         onStar: () => this.hud.bumpStars(),
         onCheckpoint: () => this.hud.flash(t('hud.checkpoint'), 'ok'),
-        onFall: () => this.hud.flash(t(this.session && this.session.sim.lastCheckpoint >= 0 ? 'hud.fell' : 'hud.fellStart'), 'warn'),
+        onFall: (cause) => {
+          const fromCp = !!this.session && this.session.sim.lastCheckpoint >= 0;
+          if (cause === 'edge') this.hud.flash(t(fromCp ? 'hud.fell' : 'hud.fellStart'), 'warn');
+          else this.hud.flash(`${t(`hud.cause.${cause}`)} ${t(fromCp ? 'hud.from.cp' : 'hud.from.start')}`, 'warn');
+        },
         onFinish: (r) => this.finishLevel(level, r),
       },
     );
@@ -391,6 +398,9 @@ export class App {
     this.hud.prepare(level, !!ghost);
     // Birinci etapta nasıl oynandığını anlat (diğer etaplarda değil)
     if (level.id === FIRST_LEVEL && !ghost) this.showTutorial();
+    // Bir engel ilk kez çıktığı etapta kısa bir ipucu
+    const hint = obstacleHint(level);
+    if (hint && !ghost) setTimeout(() => this.session && toast(this, t(hint), undefined, 5200), 2400);
   }
 
   private showTutorial(): void {
@@ -556,4 +566,17 @@ export class App {
   }
 
   levelsPerWorld = LEVELS_PER_WORLD;
+}
+
+/** Bu etap bir engel türünün ilk göründüğü etapsa o engelin ipucu anahtarı */
+function obstacleHint(level: LevelData): string | null {
+  const kinds = [
+    ['arm', (l: LevelData) => !!l.arms?.length],
+    ['pop', (l: LevelData) => !!l.poppers?.length],
+    ['hole', (l: LevelData) => !!l.holes?.length],
+  ] as const;
+  for (const [k, has] of kinds) {
+    if (has(level) && LEVELS.find(has)?.id === level.id) return `hint.${k}`;
+  }
+  return null;
 }

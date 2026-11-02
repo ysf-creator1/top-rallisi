@@ -17,11 +17,13 @@ export const TIME_BONUS_PER_SEC = 2;
 
 /** Dünya kilidi: o dünyayı açmak için gereken toplam yıldız */
 /** Dünya kilidi: yoldan toplanan yıldız sayısı (süre madalyaları sayılmaz) */
-export const WORLD_UNLOCK: Record<number, number> = { 1: 0, 2: 10, 3: 25 };
+export const WORLD_UNLOCK: Record<number, number> = { 1: 0, 2: 10, 3: 25, 4: 40 };
 /** Oynanabilir dünyalar (ilk sürüm) */
-export const PLAYABLE_WORLDS = [1, 2, 3];
+export const PLAYABLE_WORLDS = [1, 2, 3, 4];
 /** Haritada "Yakında" olarak görünen dünyalar */
-export const SOON_WORLDS = [4];
+export const SOON_WORLDS: number[] = [];
+/** Bu dünyalar, yıldız yetmese de önceki dünyanın bütün etapları bitince de açılır */
+export const UNLOCK_BY_COMPLETION = [4];
 export const LEVELS_PER_WORLD = 10;
 
 /** Süre yıldızı: bitirmek 1, gümüş 2, altın 3 (yardım modunda en fazla 2). */

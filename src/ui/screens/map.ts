@@ -1,6 +1,6 @@
 // Dünya haritası: dünyalar, kilitler ve toplam yıldız.
 
-import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, SOON_WORLDS, WORLD_UNLOCK } from '../../config/scoring';
+import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, SOON_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK } from '../../config/scoring';
 import { THEMES, themeForWorld } from '../../config/theme';
 import { levelsOfWorld } from '../../game/levels';
 import { t } from '../../i18n';
@@ -51,7 +51,7 @@ export function mapScreen(app: App): HTMLElement {
       ? h('div.lock-chip', t('map.soon'))
       : unlocked
         ? h('div.stars-chip', [svg(icons.star(16)), `${worldStars}/${LEVELS_PER_WORLD * 3}`])
-        : h('div.lock-chip', [svg(icons.lock(14)), t('map.locked', { n: WORLD_UNLOCK[w] })]);
+        : h('div.lock-chip', [svg(icons.lock(14)), t(UNLOCK_BY_COMPLETION.includes(w) ? 'map.lockedOr' : 'map.locked', { n: WORLD_UNLOCK[w] })]);
     const card = h(
       `button.world-card${unlocked ? '' : '.locked'}`,
       {

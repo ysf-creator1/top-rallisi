@@ -1,6 +1,7 @@
 // Etap JSON doğrulaması (tarif Bölüm 9). Hem testlerde hem önizleyicide kullanılır.
 
 import { physics } from '../../config/physics';
+import { safeSpot } from '../physics/obstacles';
 import { Track, type Polyline } from '../physics/track';
 import type { LevelData, RoadPoint } from './types';
 
@@ -131,5 +132,29 @@ export function validateLevel(raw: unknown): ValidationResult {
   for (const [i, m] of (L.magnets ?? []).entries()) {
     if (![m.x, m.y, m.radius, m.strength].every(isNum) || m.radius <= 0) errors.push(`magnets[${i}]: x, y, radius, strength olmalı`);
   }
+  // Engeller: pistin üzerinde, başlangıçtan ve bitişten uzak; kontrol noktaları güvenli
+  const far = (x: number, y: number, label: string, need: number) => {
+    if (Math.hypot(x - start.x, y - start.y) < need) errors.push(`${label}: başlangıca çok yakın`);
+    if (Math.hypot(x - h.x, y - h.y) < need) errors.push(`${label}: bitiş deliğine çok yakın`);
+  };
+  for (const [i, o] of (L.holes ?? []).entries()) {
+    if (![o.x, o.y, o.r].every(isNum) || o.r < 20 || o.r > 80) errors.push(`holes[${i}]: x, y, r (20–80) olmalı`);
+    else if (!track.isOnTrack(o.x, o.y)) errors.push(`holes[${i}]: pistin üzerinde olmalı`);
+    else far(o.x, o.y, `holes[${i}]`, o.r + 150);
+  }
+  for (const [i, p] of (L.poppers ?? []).entries()) {
+    if (![p.x, p.y, p.r, p.period].every(isNum) || p.r < 20 || p.period < (p.up ?? 0.5) + 1) errors.push(`poppers[${i}]: x, y, r, period (yukarıda kalma + 1 sn'den uzun) olmalı`);
+    else if (!track.isOnTrack(p.x, p.y)) errors.push(`poppers[${i}]: pistin üzerinde olmalı`);
+    else far(p.x, p.y, `poppers[${i}]`, p.r + 150);
+  }
+  for (const [i, a] of (L.arms ?? []).entries()) {
+    if (![a.x, a.y, a.length, a.speed].every(isNum) || a.length < 40 || Math.abs(a.speed) > 4) errors.push(`arms[${i}]: x, y, length (en az 40), speed (en çok 4) olmalı`);
+    else if (!track.isOnTrack(a.x, a.y)) errors.push(`arms[${i}]: göbek pistin üzerinde olmalı`);
+    else far(a.x, a.y, `arms[${i}]`, a.length + 150);
+    if (a.blades !== undefined && a.blades !== 1 && a.blades !== 2) errors.push(`arms[${i}]: blades 1 ya da 2 olmalı`);
+  }
+  cps.forEach((c, i) => {
+    if (isNum(c) && !safeSpot(L, track.centerXAt(c), c, 60)) errors.push(`checkpoints[${i}]: bir engelin dibinde (yeniden doğma yeri güvensiz)`);
+  });
   return { ok: errors.length === 0, errors };
 }

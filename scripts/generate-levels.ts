@@ -1,4 +1,4 @@
-// Dünya 1–3 için 30 etap üretir: npm run levels
+// Dünya 1–4 için 40 etap üretir: npm run levels (sadece bir dünya: npm run levels w4)
 // Tohumlu rastgelelik: aynı tohum hep aynı etabı verir.
 // Her etap otopilotla oynatılır; bitirilemiyorsa tohum değiştirilip yeniden denenir.
 // Süre hedefleri bot süresinden türetilir (oyun testinde ayarlanabilir).
@@ -10,7 +10,8 @@ import { buildRoute, runAutopilot, DEFAULT_AUTOPILOT } from '../src/game/autopil
 import { Simulation } from '../src/game/physics/sim';
 import { Track } from '../src/game/physics/track';
 import { crossings, validateLevel } from '../src/game/levels/validate';
-import type { Branch, LevelData, RoadPoint, VacuumZone } from '../src/game/levels/types';
+import type { Branch, LevelData, Popper, RoadPoint, SpinArm, TrapHole, VacuumZone } from '../src/game/levels/types';
+import { hasTimedObstacles, safeSpot } from '../src/game/physics/obstacles';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'levels');
 const W = 1000;
@@ -34,6 +35,7 @@ const NAMES: Record<number, string[]> = {
   1: ['İlk Adım', 'Çayır Yolu', 'Papatya Virajı', 'Salıncak', 'Kelebek', 'Yonca', 'Rüzgârgülü', 'Gölgelik', 'Çimen Dansı', 'Büyük Çayır'],
   2: ['Orman Girişi', 'Çam Yolu', 'Dar Patika', 'Mantar', 'Sincap', 'Yosunlu Taş', 'Baykuş', 'İğne Deliği', 'Kızılçam', 'Orman Kalbi'],
   3: ['Labirent Kapısı', 'Çit Arası', 'Gül Bahçesi', 'İki Yol', 'Sarmaşık', 'Fıskiye', 'Şimşek Yolu', 'Düğüm', 'Gizli Geçit', 'Bahçe Zirvesi'],
+  4: ['Göl Kıyısı', 'Sazlık', 'Kayık İskelesi', 'Nilüfer', 'Ördek Yolu', 'Deniz Feneri', 'Dalgakıran', 'Gün Batımı', 'Ay Işığı', 'Göl Zirvesi'],
 };
 
 function rng(seed: number): () => number {
@@ -302,16 +304,250 @@ function buildLevel(p: Plan, seed: number, lenScale: number): LevelData {
   return level;
 }
 
+/** Dünya 4 hedef bot süresi (engellerde bekleme dahil, sn) */
+const targetTime4 = (d: number) => lerp(52, 78, d);
+/** Dünya 4'te yol tahtanın kenarına daha çok yaklaşır */
+const MARGIN4 = 16;
+/** Dünya 4 etaplarındaki engel sayıları: [delik, fırlatıcı, dönen kol] */
+const OBSTACLES4: [number, number, number][] = [
+  [3, 0, 0],
+  [2, 2, 0],
+  [2, 3, 0],
+  [2, 1, 2],
+  [2, 2, 2],
+  [3, 2, 2],
+  [2, 3, 3],
+  [3, 2, 3],
+  [3, 3, 3],
+  [4, 3, 4],
+];
+
+/**
+ * Dünya 4 (Göl Kenarı): uzun, kenardan kenara giden, sık sık inip yeniden çıkan yollar
+ * ve engeller (düşürme deliği, fırlatıcı, dönen kol). Her geçişte iki engel yeri var
+ * (1/3 ve 2/3); dönen kol bir geçişte tek başına durur.
+ */
+function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
+  const R = rng(seed);
+  const { world, index, d } = p;
+  const id = `w${world}-${String(index + 1).padStart(2, '0')}`;
+  const baseW = lerp(205, 185, d);
+  const wantLen = lerp(46, 64, d) * 150 * lenScale;
+  const rise = (k: TravKind) => (k === 'steep' ? lerp(300, 400, R()) : k === 'flat' ? lerp(170, 260, R()) : -lerp(140, 240, R()));
+  // Çıkış, iniş, çıkış, iniş...: iniş ardışık olmaz ama sık gelir
+  const pick = (prev: TravKind): TravKind => (prev !== 'down' && R() < 0.6 ? 'down' : R() < 0.55 ? 'flat' : 'steep');
+
+  const road: RoadPoint[] = [{ x: 500, y: 0, w: r10(baseW + 30) }, { x: 500, y: 260, w: r10(baseW + 20) }];
+  const turns: { bot: number; top: number }[] = [];
+  /** Engel yerleri: yol noktası indeksi ve geçiş numarası */
+  const slots: { i: number; k: number }[] = [];
+  let side = R() < 0.5 ? -1 : 1;
+  let y = 260;
+  let kind: TravKind = 'steep';
+  let r = lerp(260, 340, R());
+  let len = 260;
+  let px = 500;
+  let k = 0;
+  while (len + 1000 < wantLen || turns.length < 3) {
+    const X = 500 + side * (500 - MARGIN4 - baseW / 2);
+    for (const f of [1 / 3, 2 / 3]) {
+      slots.push({ i: road.length, k });
+      road.push({ x: r10(lerp(px, X, f) + lerp(-20, 20, R())), y: r10(y + r * f), w: r10(baseW) });
+    }
+    const yb = y + r;
+    len += Math.hypot(X - px, r);
+    const next = pick(kind);
+    const rn = rise(next);
+    const Emin = baseW + 90;
+    let E = Emin + lerp(0, 60, R());
+    E = Math.max(E, Emin + 90 - r - rn);
+    road.push({ x: r10(X), y: r10(yb), w: r10(baseW) });
+    road.push({ x: r10(X), y: r10(yb + E), w: r10(baseW) });
+    turns.push({ bot: road.length - 2, top: road.length - 1 });
+    len += E;
+    y = yb + E;
+    px = X;
+    side = -side;
+    kind = next;
+    r = rn;
+    k++;
+    if (k > 60) break;
+  }
+  const remain = Math.max(250, wantLen - len);
+  const dir = Math.sign(500 - px);
+  const dx = clamp(remain * 0.8, 220, 700);
+  const fRise = clamp(remain * 0.35, 220, 400);
+  road.push({ x: r10(px + dir * dx * 0.5), y: r10(y + fRise * 0.55), w: r10(baseW) });
+  road.push({ x: r10(px + dir * dx), y: r10(y + fRise), w: r10(baseW * 0.95) });
+
+  // Engelleri yerlere dağıt: önce kollar (geçişte tek), sonra fırlatıcı ve delikler
+  const [nH, nP, nA] = OBSTACLES4[index];
+  // Kol geçişin ortasına (iki yerin arasına) konur ve geçişi tek başına kullanır
+  type Kind = 'hole' | 'pop' | 'arm' | 'armB';
+  const midOf = (i: number) => ({ x: (road[i].x + road[i + 1].x) / 2, y: (road[i].y + road[i + 1].y) / 2 });
+  const chosen = new Map<number, Kind>();
+  const usedK = new Map<number, Kind[]>();
+  const free = () => slots.filter((s) => !chosen.has(s.i));
+  const place = (kd: Kind, n: number) => {
+    for (let c = 0; c < n; c++) {
+      const cands = free().filter((s) => {
+        const ks = usedK.get(s.k) ?? [];
+        if (kd !== 'hole' && s.k === 0) return false;
+        // Kol, U dönüşlerinden uzak olmalı (oyuncu virajdayken kola girmesin)
+        if (kd === 'arm') {
+          if (ks.length || slots.find((q) => q.i === s.i + 1)?.k !== s.k) return false;
+          const m = midOf(s.i);
+          return turns.every((tn) => [tn.bot, tn.top].every((j) => Math.hypot(road[j].x - m.x, road[j].y - m.y) > 320));
+        }
+        // Delik ve fırlatıcı da virajın dibinde olmasın
+        const far = turns.every((tn) => [tn.bot, tn.top].every((j) => Math.hypot(road[j].x - road[s.i].x, road[j].y - road[s.i].y) > 240));
+        return far && ks.length < 2 && !ks.includes('arm') && !ks.includes(kd);
+      });
+      if (!cands.length) return;
+      const s = cands[Math.floor(R() * cands.length)];
+      chosen.set(s.i, kd);
+      if (kd === 'arm') chosen.set(s.i + 1, 'armB');
+      usedK.set(s.k, [...(usedK.get(s.k) ?? []), kd]);
+    }
+  };
+  place('arm', nA);
+  place('pop', nP);
+  place('hole', nH);
+  // Engel yerinde yolu genişlet
+  const holeVariant = new Map<number, 'center' | 'side' | 'pair'>();
+  for (const [i, kd] of chosen) {
+    if (kd === 'arm' || kd === 'armB') road[i].w = 250;
+    else if (kd === 'pop') road[i].w = r10(baseW);
+    else {
+      const v = index < 2 ? (R() < 0.5 ? 'center' : 'side') : (['center', 'side', 'pair'] as const)[Math.floor(R() * 3)];
+      holeVariant.set(i, v);
+      road[i].w = v === 'center' ? 270 : v === 'side' ? 230 : 290;
+    }
+  }
+
+  // U dönüşlerini kenara tam oturt
+  for (let it = 0; it < 6; it++) {
+    for (const tn of turns) {
+      const ex = reach(road, tn.bot) - (500 - MARGIN4);
+      for (const j of [tn.bot, tn.top]) road[j].x = r10(road[j].x - Math.sign(road[j].x - 500) * ex);
+    }
+  }
+  for (const tn of turns) {
+    for (const j of [tn.bot, tn.top]) road[j].x = clamp(road[j].x, road[j].w / 2 + 10, W - road[j].w / 2 - 10);
+  }
+  const last = road[road.length - 1];
+  const height = r10(last.y + 140);
+  const topY = last.y;
+  const finishHole = { x: last.x, y: last.y, r: 46 };
+  const base: LevelData = { id, name: NAMES[world][index], world, height, boardWidth: W, road, finishHole, stars: [], timeTargets: { bronze: 3, silver: 2, gold: 1 } };
+  const mainLine = new Track(base).main;
+
+  // Engeller: yolun o noktadaki dik yönüne göre yerleştirilir
+  const holes: TrapHole[] = [];
+  const poppers: Popper[] = [];
+  const arms: SpinArm[] = [];
+  for (const [i, kd] of [...chosen].sort((a, b) => a[0] - b[0])) {
+    const pt = road[i];
+    const prev = road[i - 1];
+    const next = road[i + 1];
+    const tl = Math.hypot(next.x - prev.x, next.y - prev.y) || 1;
+    const nx = -(next.y - prev.y) / tl;
+    const ny = (next.x - prev.x) / tl;
+    const hw = pt.w / 2;
+    if (kd === 'armB') continue;
+    if (kd === 'arm') {
+      const m = midOf(i);
+      arms.push({
+        x: Math.round(m.x),
+        y: Math.round(m.y),
+        length: r10(hw + 6),
+        speed: Math.round((R() < 0.5 ? -1 : 1) * lerp(0.85, 1.25, d) * 100) / 100,
+        phase: Math.round(R() * 628) / 100,
+        // Tek kanatlı: iki kanatlıda geçecek boşluk çok kısa kalıyor
+        blades: 1,
+      });
+    } else if (kd === 'pop') {
+      poppers.push({ x: pt.x, y: pt.y, r: Math.round(lerp(62, 72, d)), period: Math.round(lerp(3.6, 3.0, d) * 10) / 10, up: 0.45, offset: Math.round(R() * 30) / 10 });
+    } else {
+      const v = holeVariant.get(i)!;
+      if (v === 'center') holes.push({ x: pt.x, y: pt.y, r: 44 });
+      else if (v === 'side') {
+        const sd = R() < 0.5 ? -1 : 1;
+        const o = sd * (hw - 44 - 10);
+        holes.push({ x: Math.round(pt.x + nx * o), y: Math.round(pt.y + ny * o), r: 44 });
+      } else {
+        const o = hw - 40 - 12;
+        for (const sd of [-1, 1]) holes.push({ x: Math.round(pt.x + nx * o * sd), y: Math.round(pt.y + ny * o * sd), r: 40 });
+      }
+    }
+  }
+  const obst = { ...base, holes, poppers, arms };
+
+  // Kontrol noktaları: yolun tek geçtiği, engelden uzak yükseklikler
+  const once = (cy: number) => {
+    if (!(crossings(mainLine, cy) === 1 && crossings(mainLine, cy - 60) === 1 && crossings(mainLine, cy + 60) === 1)) return false;
+    const t = new Track(base);
+    return safeSpot(obst, t.centerXAt(cy), cy, 160);
+  };
+  const nCp = 3;
+  const checkpoints: number[] = [];
+  for (let c = 1; c <= nCp; c++) {
+    const want = r10((topY * c) / (nCp + 1));
+    for (let off = 0; off < topY; off += 10) {
+      const cand = [want + off, want - off].find((cy) => cy > 300 && cy < topY - 200 && once(cy) && !checkpoints.some((q) => Math.abs(q - cy) < 400));
+      if (cand !== undefined) {
+        checkpoints.push(cand);
+        break;
+      }
+    }
+  }
+  checkpoints.sort((a, b) => a - b);
+
+  const level: LevelData = { ...obst, checkpoints, vacuum: [] };
+  if (!holes.length) delete level.holes;
+  if (!poppers.length) delete level.poppers;
+  if (!arms.length) delete level.arms;
+
+  // Yıldızlar: tek geçilen yüksekliklerde, yolun kenarına yakın, engelin üstünde değil
+  const track = new Track(level);
+  const stars: { x: number; y: number }[] = [];
+  const fr = [0.3, 0.58, 0.84];
+  for (let s = 0; s < 3; s++) {
+    let sy = r10(topY * fr[s] + lerp(-120, 120, R()));
+    let sx = 0;
+    for (let off = 0; off < 1500; off += 10) {
+      const c = [sy + off, sy - off].find((q) => {
+        if (q < 200 || q > topY - 100 || crossings(mainLine, q) !== 1) return false;
+        const cx = track.centerXAt(q);
+        const hw = track.widthAt(q) / 2;
+        const x = clamp(cx + (s % 2 ? -1 : 1) * hw * lerp(0.25, 0.45, d), 40, W - 40);
+        if (!safeSpot(level, x, q, 30)) return false;
+        sx = x;
+        return true;
+      });
+      if (c !== undefined) {
+        sy = c;
+        break;
+      }
+    }
+    stars.push({ x: r10(sx), y: sy });
+  }
+  level.stars = stars;
+  return level;
+}
+
 function evaluate(level: LevelData, plan: Plan): { ok: boolean; time: number; falls: number; reason?: string } {
   const wantBranches = plan.world === 3 ? (plan.d > 0.5 ? 2 : 1) : 0;
   if ((level.branches?.length ?? 0) < wantBranches) return { ok: false, time: 0, falls: 0, reason: 'kısa yola yer yok' };
+  // Dünya 4: istenen sayıda dönen kol yerleşmeli (bot kolsuz denemeleri seçmesin)
+  if (plan.world === 4 && (level.arms?.length ?? 0) < OBSTACLES4[plan.index][2]) return { ok: false, time: 0, falls: 0, reason: 'kola yer yok' };
   const res = runAutopilot(new Simulation(level, { ball: 'standard', assist: false }), DEFAULT_AUTOPILOT, 200);
   if (!res.finished) return { ok: false, time: 0, falls: res.falls, reason: 'bitmedi' };
   if (res.falls > 0) return { ok: false, time: res.time, falls: res.falls, reason: 'düştü' };
   // Bot bir yerde sürünüyorsa etap fazla sıkışık demektir
   // Yolun gerçek uzunluğuna göre hız (kıvrımlı ve aşağı dönen yollar daha uzun)
-  const routeLen = buildRoute(new Track(level).lines, false).total;
-  if (routeLen / res.time < 120) return { ok: false, time: res.time, falls: 0, reason: `yavaş (${res.time.toFixed(1)} sn)` };
+  const routeLen = buildRoute(new Track(level).lines, false, level).total;
+  if (routeLen / res.time < (hasTimedObstacles(level) ? 75 : 120)) return { ok: false, time: res.time, falls: 0, reason: `yavaş (${res.time.toFixed(1)} sn)` };
   // Ağır ve buz top da bitirebilmeli (düşmeye izin var)
   for (const ball of ['ice', 'light'] as const) {
     const r = runAutopilot(new Simulation(level, { ball, assist: false }), DEFAULT_AUTOPILOT, 240);
@@ -328,17 +564,17 @@ function evaluate(level: LevelData, plan: Plan): { ok: boolean; time: number; fa
 mkdirSync(OUT, { recursive: true });
 const only = process.argv[2];
 let total = 0;
-for (const world of [1, 2, 3]) {
+for (const world of [1, 2, 3, 4]) {
   for (let index = 0; index < 10; index++) {
-    const plan: Plan = { world, index, d: index / 9, prog: ((world - 1) * 10 + index) / 29 };
-    const want = targetTime(plan.prog);
+    const plan: Plan = { world, index, d: index / 9, prog: Math.min(1, ((world - 1) * 10 + index) / 29) };
+    const want = world === 4 ? targetTime4(plan.d) : targetTime(plan.prog);
     const lid = `w${world}-${String(index + 1).padStart(2, '0')}`;
     if (only && !lid.startsWith(only)) continue;
     let done = false;
     let scale = 1;
     for (let attempt = 0; attempt < 150 && !done; attempt++) {
       const seed = world * 1000 + index * 37 + attempt * 7919;
-      const level = buildLevel(plan, seed, scale);
+      const level = world === 4 ? buildWorld4(plan, seed, scale) : buildLevel(plan, seed, scale);
       const v0 = validateLevel({ ...level, timeTargets: { gold: 1, silver: 2, bronze: 3 } });
       if (!v0.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: geçersiz ${v0.errors.join('; ')}\n`);
@@ -351,7 +587,8 @@ for (const world of [1, 2, 3]) {
       }
       const t = ev.time;
       // Süre hedefin ±%6'i içinde olmalı; değilse uzunluk ölçeğini düzelt
-      if (Math.abs(t / want - 1) > (attempt < 90 ? 0.06 : 0.14)) {
+      const tol = world === 4 ? (attempt < 90 ? 0.1 : 0.18) : attempt < 90 ? 0.06 : 0.14;
+      if (Math.abs(t / want - 1) > tol) {
         scale *= Math.max(0.6, Math.min(1.6, want / t));
         process.stdout.write(`  ${level.id} tohum ${seed}: süre ${t.toFixed(1)} sn, hedef ${want.toFixed(0)} → ölçek ${scale.toFixed(2)}\n`);
         continue;

@@ -40,6 +40,40 @@ export interface Magnet {
   onOff?: [number, number];
 }
 
+/** Düşürme deliği: topun merkezi içine girerse top düşer (bitiş deliği değil) */
+export interface TrapHole {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** Dönen kol: (x, y) göbeğin yeri. Kola değen top düşer. */
+export interface SpinArm {
+  x: number;
+  y: number;
+  /** Göbekten kol ucuna uzunluk */
+  length: number;
+  /** Dönüş hızı (radyan/sn). Eksi: saat yönünde */
+  speed: number;
+  /** Başlangıç açısı (radyan) */
+  phase?: number;
+  /** Kol sayısı (1 ya da 2, varsayılan 2) */
+  blades?: number;
+}
+
+/** Fırlatıcı: belli aralıklarla zeminden yükselir, üstündeki topu fırlatır. */
+export interface Popper {
+  x: number;
+  y: number;
+  r: number;
+  /** Bir tur süresi (sn) */
+  period: number;
+  /** Yukarıda kalma süresi (sn, varsayılan 0,5) */
+  up?: number;
+  /** Tur kayması (sn) */
+  offset?: number;
+}
+
 export interface Sign {
   x: number;
   y: number;
@@ -62,5 +96,8 @@ export interface LevelData {
   wind?: WindZone[];
   magnets?: Magnet[];
   signs?: Sign[];
+  holes?: TrapHole[];
+  arms?: SpinArm[];
+  poppers?: Popper[];
   timeTargets: { bronze: number; silver: number; gold: number };
 }

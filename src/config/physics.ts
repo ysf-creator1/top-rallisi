@@ -38,6 +38,8 @@ export interface PhysicsConfig {
   windForce: number;
   /** Mıknatıs kuvvet ölçeği (birim/sn²) */
   magnetForce: number;
+  /** Dönen kola değme mesafesi, top yarıçapına oranla (küçük = affedici) */
+  armContact: number;
 }
 
 export const DEFAULT_PHYSICS: PhysicsConfig = {
@@ -59,6 +61,7 @@ export const DEFAULT_PHYSICS: PhysicsConfig = {
   vacuumForce: 900,
   windForce: 900,
   magnetForce: 1100,
+  armContact: 0.75,
 };
 
 /** Canlı değiştirilebilen tek kopya. */
@@ -77,6 +80,8 @@ export const ASSIST = {
   hazardMultiplier: 0.5,
   minCheckpoints: 3,
   maxTimeStars: 2,
+  /** Engeller (dönen kol, fırlatıcı) bu oranda yavaş çalışır */
+  obstacleTimeScale: 0.65,
 };
 
 /** Dünyaya göre vakum gücü çarpanı (Dünya 3'ten sonra yok) */

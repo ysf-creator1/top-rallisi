@@ -147,6 +147,58 @@ export class TrackSurface {
       ctx.arc(hx, hy, r, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // Düşürme delikleri: gerçek delik gibi derin; karşı iç duvar ışık alır, turuncu ağız
+    for (const th of this.level.holes ?? []) {
+      if (th.y + th.r < y0 - 20 || th.y - th.r > y1 + 20) continue;
+      const hx = toX(th.x);
+      const hy = toY(th.y);
+      const r = th.r * ppu;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.clip();
+      const g = ctx.createRadialGradient(hx, hy + r * 0.25, r * 0.05, hx, hy, r * 1.05);
+      g.addColorStop(0, '#020203');
+      g.addColorStop(0.7, '#0B0A0C');
+      g.addColorStop(1, '#1C1512');
+      ctx.fillStyle = g;
+      ctx.fillRect(hx - r, hy - r, r * 2, r * 2);
+      // Üstteki iç duvar (aşağı bakan yüz) turuncu ışığı yansıtır
+      const wall = ctx.createLinearGradient(hx, hy - r, hx, hy - r * 0.15);
+      wall.addColorStop(0, 'rgba(238, 138, 78, 0.75)');
+      wall.addColorStop(0.45, 'rgba(120, 58, 32, 0.45)');
+      wall.addColorStop(1, 'rgba(10, 8, 8, 0)');
+      ctx.fillStyle = wall;
+      ctx.beginPath();
+      ctx.arc(hx, hy - r, r * 1.02, 0, Math.PI);
+      ctx.arc(hx, hy - r * 0.35, r * 0.9, Math.PI, 0, true);
+      ctx.fill();
+      ctx.restore();
+      // Turuncu ağız ve çevresinde uyarı halkası
+      ctx.lineWidth = 7 * ppu;
+      ctx.strokeStyle = '#EE8A4E';
+      ctx.beginPath();
+      ctx.arc(hx, hy, r + 2 * ppu, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.save();
+      ctx.lineWidth = 4 * ppu;
+      ctx.strokeStyle = 'rgba(238, 138, 78, 0.55)';
+      ctx.setLineDash([9 * ppu, 8 * ppu]);
+      ctx.beginPath();
+      ctx.arc(hx, hy, r + 14 * ppu, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Fırlatıcıların zemindeki yuvası
+    for (const p of this.level.poppers ?? []) {
+      if (p.y + p.r < y0 - 20 || p.y - p.r > y1 + 20) continue;
+      ctx.fillStyle = '#121315';
+      ctx.beginPath();
+      ctx.arc(toX(p.x), toY(p.y), (p.r + 6) * ppu, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   /** Değişken genişlikli çizgi: her parça kendi genişliğiyle, yuvarlak uçlu. */

@@ -10,6 +10,8 @@ import { GhostPlayer, GhostRecorder, ballScale, type GhostData, type GhostFrame 
 import type { KeyboardInput } from './input/keyboard';
 import type { RopeInput } from './input/ropes';
 import type { LevelData } from './levels/types';
+import type { FallCause } from './physics/obstacles';
+import { obstacleTime } from './physics/obstacles';
 import { FALL_DURATION, Simulation, type SimEvent } from './physics/sim';
 import type { GameRenderer, RenderState } from './render/scene';
 
@@ -39,7 +41,7 @@ export interface SessionCallbacks {
   onStart?(): void;
   onStar?(index: number, total: number): void;
   onCheckpoint?(index: number): void;
-  onFall?(): void;
+  onFall?(cause: FallCause): void;
   onRespawn?(): void;
   onFinish?(result: SessionResult): void;
 }
@@ -220,7 +222,7 @@ export class GameSession {
             vibrate([30, 40, 30]);
           }
           this.ropes.releaseAll();
-          this.cb.onFall?.();
+          this.cb.onFall?.(e.cause);
           break;
         case 'respawn':
           this.spawnAt = this.time;
@@ -272,11 +274,12 @@ export class GameSession {
       ballY: sim.ballY,
       roll: sim.roll,
       ballScale: ballScale(sim),
-      fall: sim.phase === 'falling' ? { t: Math.min(1, sim.phaseTime / (FALL_DURATION * 0.85)), dir: this.fallDir } : null,
+      fall: sim.phase === 'falling' ? { t: Math.min(1, sim.phaseTime / (FALL_DURATION * 0.85)), dir: this.fallDir, ...sim.fallInfo } : null,
       spawn: Math.min(1, (this.time - this.spawnAt) / 0.32),
       ghost,
       ropes: [rope(0), rope(1)],
       time: this.time,
+      obsTime: obstacleTime(sim.simTime, sim.opts.assist),
     };
   }
 
