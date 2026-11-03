@@ -1,7 +1,7 @@
 // Uygulama: ekranlar, oyun akışı, kayıt ve ödüller.
 
 import { ASSIST, type BallType } from '../config/physics';
-import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
+import { PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
 import { THEMES, themeForWorld, trackHex, type ThemeId } from '../config/theme';
 import { parseGhost, type GhostData } from '../game/ghost';
 import { KeyboardInput } from '../game/input/keyboard';
@@ -574,8 +574,6 @@ export class App {
     this.save.update((d) => (d.flags.a2hsShown = true));
     showA2hs(this);
   }
-
-  levelsPerWorld = LEVELS_PER_WORLD;
 }
 
 /** Bu etap bir engel türünün ilk göründüğü etapsa o engelin ipucu anahtarı */

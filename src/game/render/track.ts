@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { trackPalette, type TrackPalette } from '../../config/theme';
 import type { LevelData } from '../levels/types';
 import { POPPER_VIS } from '../physics/obstacles';
-import type { Polyline, Track } from '../physics/track';
+import { levelTopY, type Polyline, type Track } from '../physics/track';
 import { S, canvasTexture, makeCanvas, type Quality } from './common';
 
 const TILE = 1024;
@@ -40,7 +40,7 @@ export class TrackSurface {
   private build(): void {
     const ppu = PPU[this.quality];
     const W = this.level.boardWidth;
-    const top = this.level.finishHole.y + 400;
+    const top = levelTopY(this.level) + 400;
     const bottom = -300;
     const wPx = Math.round((W + MARGIN * 2) * ppu);
     const hPx = Math.round(TILE * ppu);
@@ -95,12 +95,13 @@ export class TrackSurface {
     const lines = this.track.lines;
     const pal = this.palette;
 
-    // 1) Siluet (gölge için)
-    if (!this.sil || this.sil.width !== w || this.sil.height !== h) this.sil = makeCanvas(w, h);
+    // 1) Siluet (gölge için). Üstte ve altta pay var: komşu döşemedeki yolun gölgesi de bu döşemeye düşsün
+    const sp = Math.round(48 * ppu);
+    if (!this.sil || this.sil.width !== w || this.sil.height !== h + sp * 2) this.sil = makeCanvas(w, h + sp * 2);
     const sctx = this.sil.getContext('2d')!;
-    sctx.clearRect(0, 0, w, h);
+    sctx.clearRect(0, 0, w, h + sp * 2);
     sctx.fillStyle = sctx.strokeStyle = '#000';
-    for (const l of lines) this.strokeLine(sctx, l, toX, toY, ppu, y0, y1, EDGE * 2);
+    for (const l of lines) this.strokeLine(sctx, l, toX, (y) => toY(y) + sp, ppu, y0, y1, EDGE * 2);
 
     // 2) Yumuşak gölge: siluet ekran dışına çizilir, sadece gölgesi düşer
     ctx.save();
@@ -108,7 +109,7 @@ export class TrackSurface {
     ctx.shadowBlur = 16 * ppu;
     ctx.shadowOffsetX = 9 * ppu + w * 2;
     ctx.shadowOffsetY = 14 * ppu;
-    ctx.drawImage(this.sil, -w * 2, 0);
+    ctx.drawImage(this.sil, -w * 2, -sp);
     ctx.restore();
 
     // 3) Kenar (pah) ve 4) dolgu

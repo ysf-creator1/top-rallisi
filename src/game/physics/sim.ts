@@ -5,7 +5,7 @@ import { ASSIST, BALL_TRAITS, WORLD_VACUUM, physics, type BallType } from '../..
 import type { LevelData } from '../levels/types';
 import { barFrame, barPoint, equilibriumTilt, localAngle, type BarFrame } from './bar';
 import { armTouch, hitObstacle, obstacleTime, safeSpot, type ArmTouch, type FallCause } from './obstacles';
-import { Track, type NearestResult, type Polyline } from './track';
+import { Track, levelTopY, type NearestResult, type Polyline } from './track';
 
 export type SimPhase = 'playing' | 'falling' | 'finishing' | 'finished';
 
@@ -124,7 +124,7 @@ export class Simulation {
     this.respawnHeights = [startY, ...this.checkpoints];
     this.placeBall(level.road[0].x, startY);
     this.yMin = Math.min(this.yL, this.yR) - 30;
-    this.yMax = level.finishHole.y + level.finishHole.r + r * 2;
+    this.yMax = Math.max(level.finishHole.y + level.finishHole.r, levelTopY(level)) + r * 2;
   }
 
   get depth(): number {

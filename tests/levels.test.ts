@@ -10,11 +10,12 @@ import { allLevels } from './helpers';
 const levels = allLevels();
 
 describe('etap JSON doğrulaması', () => {
-  test('6 dünya, her dünyada 15 etap; sıra listesi bütün etapları kapsar', () => {
-    expect(levels.length).toBe(90);
-    for (const w of [1, 2, 3, 4, 5, 6]) expect(levels.filter((l) => l.world === w).length).toBe(15);
+  test('6 dünya: Dünya 1 15 etap, Dünya 2–6 18 etap; sıra listesi bütün etapları kapsar', () => {
+    const per = (w: number) => (w === 1 ? 15 : 18);
+    expect(levels.length).toBe(105);
+    for (const w of [1, 2, 3, 4, 5, 6]) expect(levels.filter((l) => l.world === w).length).toBe(per(w));
     for (const [w, ids] of Object.entries(WORLD_ORDER)) {
-      expect(new Set(ids).size).toBe(15);
+      expect(new Set(ids).size).toBe(per(Number(w)));
       for (const id of ids) expect(levels.find((l) => l.id === id)?.world).toBe(Number(w));
     }
   });
@@ -25,6 +26,11 @@ describe('etap JSON doğrulaması', () => {
     expect(w1.indexOf('w1-11')).toBeLessThan(w1.indexOf('w1-03'));
     expect(w1[w1.length - 1]).toBe('w1-10');
     expect(levelsOfWorld(5).map((l) => l.id)[0]).toBe('w5-01');
+    // Taslak etaplar 10., 15. ve 18. sırada
+    for (const w of [2, 3, 4, 5, 6]) {
+      const ids = levelsOfWorld(w).map((l) => l.id);
+      expect([ids[9], ids[14], ids[17]]).toEqual([`w${w}-16`, `w${w}-17`, `w${w}-18`]);
+    }
   });
 
   test('yoldan toplanan yıldız yok; yıldız süreleri 5 sn katı ve sıralı', () => {
@@ -74,9 +80,9 @@ describe('etap JSON doğrulaması', () => {
     expect(validateLevel(null).ok).toBe(false);
   });
 
-  test('Dünya 3 etaplarında kısa yol var, tabela yok', () => {
+  test('Dünya 3 etaplarında kısa yol var (kara kalem taslak etaplar 16–18 hariç), tabela yok', () => {
     for (const l of levels.filter((x) => x.world === 3)) {
-      expect(l.branches?.length).toBeGreaterThan(0);
+      if (Number(l.id.split('-')[1]) < 16) expect(l.branches?.length).toBeGreaterThan(0);
       expect(l.signs).toBeUndefined();
     }
   });

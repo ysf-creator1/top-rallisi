@@ -26,8 +26,6 @@ export const PLAYABLE_WORLDS = [1, 2, 3, 4, 5, 6];
 export const SOON_WORLDS: number[] = [];
 /** Bu dünyalar, yıldız yetmese de önceki dünyanın bütün etapları bitince de açılır */
 export const UNLOCK_BY_COMPLETION = [2, 3, 4, 5, 6];
-export const LEVELS_PER_WORLD = 15;
-
 /**
  * Bot süresinden yıldız süreleri (5 sn'ye yukarı yuvarlanır, akılda kalsın):
  * 3 yıldız bot ×1,5, 2 yıldız bot ×2,1. "bronze" sadece zaman bonusu için (bot ×3).

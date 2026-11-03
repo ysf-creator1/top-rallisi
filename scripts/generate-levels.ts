@@ -13,6 +13,7 @@ import { crossings, validateLevel } from '../src/game/levels/validate';
 import type { Branch, LevelData, Popper, RoadPoint, SpinArm, TrapHole, VacuumZone, WindZone } from '../src/game/levels/types';
 import { hasTimedObstacles, safeSpot } from '../src/game/physics/obstacles';
 import { timeTargetsFromBot } from '../src/config/scoring';
+import { sketchRoad, type SketchName } from './sketch-templates';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'levels');
 const W = 1000;
@@ -66,8 +67,12 @@ interface Plan {
   wind?: { n: number; force: number; pulse?: boolean };
   /** Hedef bot süresi (sn); yoksa ilerlemeden hesaplanır */
   want?: number;
-  /** 'varied': kenardan kenara zikzak yerine karışık desenli yol */
-  shape?: 'varied';
+  /** 'varied': kenardan kenara zikzak yerine karışık desenli yol; 'sketch': kara kalem taslaktan el çizimi yol */
+  shape?: 'varied' | 'sketch';
+  /** shape 'sketch': hangi taslak, ayna mı, dikey uzatma */
+  sketch?: SketchName;
+  mirror?: boolean;
+  stretch?: number;
   /** 0..1 dünya içindeki zorluk */
   d: number;
   /** 0..1 bütün etaplar boyunca ilerleme (uzunluk buna göre artar) */
@@ -365,7 +370,35 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   let len = 260;
   let px = 500;
   let k = 0;
-  if (p.shape === 'varied') {
+  if (p.shape === 'sketch') {
+    // Taslak yol: köşeler viraj, köşe arası parçalar geçiş (engel ve rüzgâr yerleri)
+    const sk = sketchRoad(p.sketch!, { mirror: p.mirror, stretch: (p.stretch ?? 1) * lenScale });
+    // Yan yana yollar 250 aralıklı: genişlik en çok 195 (doğrulayıcı genişlik + 40 boşluk ister)
+    const sw = Math.round(Math.min(baseW, 195));
+    road.length = 0;
+    const cs = new Set(sk.corners);
+    // Engel yeri: yol orada 290'a kadar genişler; yan yana yollar (asansör sütunları) ve bitiş deliği uzak olmalı
+    const end = sk.pts[sk.pts.length - 1];
+    const roomy = (i: number) => {
+      const q = sk.pts[i];
+      if (Math.hypot(q.x - end.x, q.y - end.y) < 320) return false;
+      return sk.pts.every((o, j) => Math.abs(i - j) * 55 < 450 || Math.hypot(o.x - q.x, o.y - q.y) > 300);
+    };
+    let segA = 0;
+    sk.pts.forEach((q, i) => {
+      road.push({ x: Math.round(q.x), y: Math.round(q.y), w: i < 4 ? sw + 30 - i * 8 : sw });
+      if (i > 0 && i < sk.pts.length - 1 && cs.has(i)) {
+        turns.push({ bot: i, top: i });
+        if (i - segA > 2) segs.push({ a: segA, b: i });
+        segA = i;
+        k++;
+      } else if (i > 4 && i < sk.pts.length - 3 && roomy(i)) slots.push({ i, k });
+    });
+    segs.push({ a: segA, b: road.length - 1 });
+    const lp = road[road.length - 1];
+    px = lp.x;
+    y = lp.y;
+  } else if (p.shape === 'varied') {
     // Farklı desen: parçalar karışık (dalga, dik tırmanış, merdiven, yatık ya da dik geçiş, iniş).
     // Kıvrımlar kenara oturtulmaz; "turns" burada sadece engelleri virajlardan uzak tutmak için.
     const lo = MARGIN4 + baseW / 2 + 10;
@@ -470,12 +503,14 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
     k++;
     if (k > 60) break;
   }
-  const remain = Math.max(250, wantLen - len);
-  const dir = Math.sign(500 - px);
-  const dx = clamp(remain * 0.8, 220, 700);
-  const fRise = clamp(remain * 0.35, 220, 400);
-  road.push({ x: r10(px + dir * dx * 0.5), y: r10(y + fRise * 0.55), w: r10(baseW) });
-  road.push({ x: r10(px + dir * dx), y: r10(y + fRise), w: r10(baseW * 0.95) });
+  if (p.shape !== 'sketch') {
+    const remain = Math.max(250, wantLen - len);
+    const dir = Math.sign(500 - px);
+    const dx = clamp(remain * 0.8, 220, 700);
+    const fRise = clamp(remain * 0.35, 220, 400);
+    road.push({ x: r10(px + dir * dx * 0.5), y: r10(y + fRise * 0.55), w: r10(baseW) });
+    road.push({ x: r10(px + dir * dx), y: r10(y + fRise), w: r10(baseW * 0.95) });
+  }
 
   // Engelleri yerlere dağıt: önce kollar (geçişte tek), sonra fırlatıcı ve delikler
   // Dünya 1–3'ün farklı desenli etaplarında engel yok
@@ -495,7 +530,9 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
         if (kd === 'arm') {
           if (ks.length || slots.find((q) => q.i === s.i + 1)?.k !== s.k) return false;
           const m = midOf(s.i);
-          return turns.every((tn) => [tn.bot, tn.top].every((j) => Math.hypot(road[j].x - m.x, road[j].y - m.y) > 320));
+          // Taslak yollarda köşeler sık: biraz daha yakın olabilir
+          const gapT = p.shape === 'sketch' ? 220 : 320;
+          return turns.every((tn) => [tn.bot, tn.top].every((j) => Math.hypot(road[j].x - m.x, road[j].y - m.y) > gapT));
         }
         // Delik ve fırlatıcı da virajın dibinde olmasın
         const far = turns.every((tn) => [tn.bot, tn.top].every((j) => Math.hypot(road[j].x - road[s.i].x, road[j].y - road[s.i].y) > 240));
@@ -524,7 +561,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   }
 
   // U dönüşlerini kenara tam oturt (farklı desenli yollarda yok)
-  for (let it = 0; it < (p.shape === 'varied' ? 0 : 6); it++) {
+  for (let it = 0; it < (p.shape ? 0 : 6); it++) {
     for (const tn of turns) {
       const ex = reach(road, tn.bot) - (500 - MARGIN4);
       for (const j of [tn.bot, tn.top]) road[j].x = r10(road[j].x - Math.sign(road[j].x - 500) * ex);
@@ -534,7 +571,8 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
     for (const j of [tn.bot, tn.top]) road[j].x = clamp(road[j].x, road[j].w / 2 + 10, W - road[j].w / 2 - 10);
   }
   const last = road[road.length - 1];
-  const height = r10(last.y + 140);
+  // Taslak yollar bitişten önce daha yükseğe çıkabilir (asansör tepesi): çubuk oraya da ulaşmalı
+  const height = r10(Math.max(...road.map((q) => q.y)) + 140);
   const topY = last.y;
   const finishHole = { x: last.x, y: last.y, r: 46 };
   const base: LevelData = { id, name: nameOf(p), world, height, boardWidth: W, road, finishHole, stars: [], timeTargets: { bronze: 3, silver: 2, gold: 1 } };
@@ -593,12 +631,19 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
       const kk = pool.splice(Math.floor(R() * pool.length), 1)[0];
       const a = road[segs[kk].a];
       const b = road[segs[kk].b];
-      const x0 = Math.min(a.x, b.x) + 120;
-      const x1 = Math.max(a.x, b.x) - 120;
+      // Taslak yollarda yatay parçalar kısa: kenar payı az, dik parçada yolu ortalayan bölge
+      const pad = p.shape === 'sketch' ? 60 : 120;
+      let x0 = Math.min(a.x, b.x) + pad;
+      let x1 = Math.max(a.x, b.x) - pad;
       const y0 = Math.min(a.y, b.y);
       const y1 = Math.max(a.y, b.y);
       const hgt = Math.max(160, (y1 - y0) * 0.6);
       const ym = (y0 + y1) / 2;
+      if (p.shape === 'sketch' && x1 - x0 < 200 && y1 - y0 > 260) {
+        const cx = (a.x + b.x) / 2;
+        x0 = cx - 130;
+        x1 = cx + 130;
+      }
       if (x1 - x0 < 200) continue;
       const f = Math.round(p.wind.force * lerp(0.85, 1.1, R()) * 100) / 100;
       wind.push({
@@ -667,7 +712,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
 }
 
 function evaluate(level: LevelData, plan: Plan): { ok: boolean; time: number; falls: number; reason?: string } {
-  const wantBranches = plan.world === 3 ? (plan.d > 0.5 ? 2 : 1) : 0;
+  const wantBranches = plan.world === 3 && plan.shape !== 'sketch' ? (plan.d > 0.5 ? 2 : 1) : 0;
   if ((level.branches?.length ?? 0) < wantBranches) return { ok: false, time: 0, falls: 0, reason: 'kısa yola yer yok' };
   // Dünya 4: istenen sayıda dönen kol yerleşmeli (bot kolsuz denemeleri seçmesin)
   const wantArms = plan.world >= 4 ? (plan.obst ?? OBSTACLES4[plan.index])[2] : 0;
@@ -790,6 +835,37 @@ W6.forEach((c, i) =>
   }),
 );
 
+/**
+ * Taslak etaplar (2026-11): Dünya 2–6'ya üçer tane; oyunda 10., 15. ve 18. sırada.
+ * 16 = Kıvrım Kuyuları, 17 = Asansör (kıvrımlı), 18 = Asansör (tümsekli).
+ */
+const SKETCH_NAMES: Record<number, [string, string, string]> = {
+  2: ['Ağaç Kovuğu', 'Sincap Asansörü', 'Kök Tümsekleri'],
+  3: ['Sarmal Çit', 'Bahçe Asansörü', 'Taş Basamaklar'],
+  4: ['Girdap', 'Fener Merdiveni', 'Dalga Tümseği'],
+  5: ['Yaprak Kuyusu', 'Değirmen Asansörü', 'Fırtına Tümseği'],
+  6: ['Buz Kuyusu', 'Teleferik', 'Çığ Tümsekleri'],
+};
+const SKETCH_KINDS: SketchName[] = ['kivrimKuyulari', 'asansorKivrimli', 'asansorTumsekli'];
+const SKETCH_OBST: Record<number, [number, number, number][]> = {
+  4: [[1, 1, 0], [2, 1, 1], [2, 2, 1]],
+  5: [[1, 0, 0], [2, 1, 0], [2, 1, 1]],
+  6: [[2, 1, 1], [3, 2, 1], [3, 2, 2]],
+};
+const SKETCH_WIND: Record<number, Plan['wind'][]> = {
+  5: [{ n: 2, force: 0.35 }, { n: 2, force: 0.4, pulse: true }, { n: 3, force: 0.45, pulse: true }],
+  6: [{ n: 2, force: 0.4 }, { n: 2, force: 0.42, pulse: true }, { n: 2, force: 0.45, pulse: true }],
+};
+for (const world of [2, 3, 4, 5, 6]) {
+  SKETCH_KINDS.forEach((sketch, j) => {
+    NEW_PLANS.push({
+      world, num: 16 + j, name: SKETCH_NAMES[world][j], index: 15 + j, d: [0.55, 0.75, 0.95][j], prog: 1,
+      boost: world <= 3 ? 1.05 : 1, shape: 'sketch', sketch, mirror: (world + j) % 2 === 1, stretch: lerp(1, 1.15, (world - 2) / 4),
+      obst: SKETCH_OBST[world]?.[j] ?? [0, 0, 0], ...(SKETCH_WIND[world] ? { wind: SKETCH_WIND[world][j] } : {}),
+    });
+  });
+}
+
 mkdirSync(OUT, { recursive: true });
 const only = process.argv[2];
 if (!only) {
@@ -809,11 +885,13 @@ for (const plan of plans) {
       const seed = world * 1000 + index * 37 + attempt * 7919 + (plan.num && plan.num !== index + 1 ? plan.num * 101 : 0);
       const level = world >= 4 || plan.shape ? buildWorld4(plan, seed, scale) : buildLevel(plan, seed, scale);
       const v0 = validateLevel({ ...level, timeTargets: { gold: 1, silver: 2, bronze: 3 } });
+      if (!v0.ok && process.env.DUMP) writeFileSync(process.env.DUMP, JSON.stringify(level));
       if (!v0.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: geçersiz ${v0.errors.join('; ')}\n`);
         continue;
       }
       const ev = evaluate(level, plan);
+      if (!ev.ok && process.env.DUMP) writeFileSync(process.env.DUMP, JSON.stringify(level));
       if (!ev.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: ${ev.reason}\n`);
         continue;
@@ -821,7 +899,8 @@ for (const plan of plans) {
       const t = ev.time;
       // Süre hedefin ±%6'i içinde olmalı; değilse uzunluk ölçeğini düzelt
       const tol = world >= 4 ? (attempt < 90 ? 0.1 : 0.18) : attempt < 90 ? 0.06 : 0.14;
-      if (Math.abs(t / want - 1) > tol) {
+      // Taslak yollarda uzunluk sabit: süre ne çıkarsa yıldızlar ona göre
+      if (plan.shape !== 'sketch' && Math.abs(t / want - 1) > tol) {
         scale *= Math.max(0.6, Math.min(1.6, want / t));
         process.stdout.write(`  ${level.id} tohum ${seed}: süre ${t.toFixed(1)} sn, hedef ${want.toFixed(0)} → ölçek ${scale.toFixed(2)}\n`);
         continue;

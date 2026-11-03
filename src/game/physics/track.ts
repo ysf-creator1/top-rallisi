@@ -238,3 +238,10 @@ export class Track {
     return ws[count - 1];
   }
 }
+
+/** Etabın en üst yol yüksekliği: çoğu etapta bitiş deliği, asansörlü yollarda yol bitişten önce daha yükseğe çıkar. */
+export function levelTopY(level: LevelData): number {
+  let top = level.finishHole.y;
+  for (const p of level.road) top = Math.max(top, p.y);
+  return top;
+}

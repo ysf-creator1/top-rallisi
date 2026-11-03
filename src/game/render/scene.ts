@@ -10,7 +10,7 @@ import { THEMES, type SceneTheme, type ThemeId } from '../../config/theme';
 import type { Costume } from '../../save/schema';
 import type { LevelData } from '../levels/types';
 import type { FallCause } from '../physics/obstacles';
-import type { Track } from '../physics/track';
+import { levelTopY, type Track } from '../physics/track';
 import { BallView } from './ball';
 import { BAR_Z, GROUND_Y, LEAN, S, canvasTexture, disposeTree, makeCanvas, type Quality } from './common';
 import { applyParkTheme, buildPark, type ParkParts } from './park';
@@ -192,8 +192,8 @@ export class GameRenderer {
   setLevel(o: LevelVisualOptions): void {
     this.clearLevel();
     const L = o.level;
-    this.levelTop = L.finishHole.y;
-    const stand = buildStand(L.finishHole.y, this.theme);
+    this.levelTop = levelTopY(L);
+    const stand = buildStand(this.levelTop, this.theme);
     this.stand = stand;
     this.levelGroup.add(stand.local);
     this.fgScene.add(stand.world);
