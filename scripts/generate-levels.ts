@@ -66,6 +66,8 @@ interface Plan {
   wind?: { n: number; force: number; pulse?: boolean };
   /** Hedef bot süresi (sn); yoksa ilerlemeden hesaplanır */
   want?: number;
+  /** 'varied': kenardan kenara zikzak yerine karışık desenli yol */
+  shape?: 'varied';
   /** 0..1 dünya içindeki zorluk */
   d: number;
   /** 0..1 bütün etaplar boyunca ilerleme (uzunluk buna göre artar) */
@@ -354,6 +356,8 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   const turns: { bot: number; top: number }[] = [];
   /** Engel yerleri: yol noktası indeksi ve geçiş numarası */
   const slots: { i: number; k: number }[] = [];
+  /** Her geçişin baş ve son yol noktası (rüzgâr bölgeleri için) */
+  const segs: { a: number; b: number }[] = [];
   let side = R() < 0.5 ? -1 : 1;
   let y = 260;
   let kind: TravKind = 'steep';
@@ -361,7 +365,86 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   let len = 260;
   let px = 500;
   let k = 0;
+  if (p.shape === 'varied') {
+    // Farklı desen: parçalar karışık (dalga, dik tırmanış, merdiven, yatık ya da dik geçiş, iniş).
+    // Kıvrımlar kenara oturtulmaz; "turns" burada sadece engelleri virajlardan uzak tutmak için.
+    const lo = MARGIN4 + baseW / 2 + 10;
+    const hi = W - lo;
+    const add = (nx: number, ny: number, slot = false) => {
+      const cx = clamp(nx, lo, hi);
+      if (slot) slots.push({ i: road.length, k });
+      len += Math.hypot(cx - px, ny - y);
+      road.push({ x: r10(cx), y: r10(ny), w: r10(baseW) });
+      px = cx;
+      y = ny;
+    };
+    const bend = () => turns.push({ bot: road.length - 1, top: road.length - 1 });
+    const climbE = () => lerp(baseW + 90, baseW + 150, R());
+    let prev = '';
+    while (len + 900 < wantLen) {
+      const a = road.length - 1;
+      const opts = ['cross', 'wave', 'climb', 'stairs', 'diag', 'down'].filter((m) => m !== prev);
+      let m = opts[Math.floor(R() * opts.length)];
+      const atEdge = Math.abs(px - 500) > 280;
+      if (m === 'down' && (!atEdge || road.length < 5)) m = 'diag';
+      const far = px < 500 ? hi : lo;
+      const x0 = px;
+      const y0 = y;
+      if (m === 'cross' || m === 'diag') {
+        const rr = m === 'cross' ? lerp(240, 380, R()) : R() < 0.5 ? lerp(110, 160, R()) : lerp(520, 680, R());
+        const tx = m === 'cross' ? far : lerp(x0, far, lerp(0.65, 1, R()));
+        add(lerp(x0, tx, 1 / 3), y0 + rr / 3, true);
+        add(lerp(x0, tx, 2 / 3), y0 + (rr * 2) / 3, true);
+        add(tx, y0 + rr);
+        bend();
+        add(tx + lerp(-30, 30, R()), y + climbE());
+        bend();
+      } else if (m === 'wave') {
+        // Ortada sık kıvrımlar
+        const A = lerp(110, 165, R());
+        const cx = clamp(x0 + lerp(-120, 120, R()), lo + A, hi - A);
+        const n = R() < 0.5 ? 3 : 4;
+        const s0 = x0 < cx ? 1 : -1;
+        for (let j = 0; j < n; j++) {
+          add(cx + (j % 2 ? -s0 : s0) * A, y + lerp(200, 250, R()));
+          bend();
+        }
+      } else if (m === 'climb') {
+        // Uzun, neredeyse dik tırmanış (hafif yalpalayarak)
+        add(x0 + lerp(-50, 50, R()), y0 + lerp(280, 360, R()), true);
+        add(x0 + lerp(-50, 50, R()), y + lerp(260, 340, R()));
+        bend();
+      } else if (m === 'stairs') {
+        // Merdiven: kısa yatık basamaklar, hep aynı yöne
+        const dir = far > x0 ? 1 : -1;
+        const steps = R() < 0.5 ? 2 : 3;
+        for (let j = 0; j < steps; j++) {
+          add(px + dir * lerp(190, 250, R()), y + lerp(70, 100, R()), j === 0);
+          bend();
+          add(px + dir * 15, y + lerp(170, 210, R()));
+          bend();
+        }
+      } else {
+        // İniş: önce kenarda yüksel, sonra karşıya doğru inerek geç, sonra yine yüksel
+        const drop = lerp(140, 220, R());
+        add(x0, y0 + baseW + 120 + drop);
+        bend();
+        const ys = y;
+        add(lerp(x0, far, 1 / 3), ys - drop / 3, true);
+        add(lerp(x0, far, 2 / 3), ys - (drop * 2) / 3, true);
+        add(far, ys - drop);
+        bend();
+        add(far, y + baseW + 120 + drop * 0.5);
+        bend();
+      }
+      segs.push({ a, b: road.length - 1 });
+      prev = m;
+      k++;
+      if (k > 60) break;
+    }
+  } else
   while (len + 1000 < wantLen || turns.length < 3) {
+    const segA = road.length - 1;
     const X = 500 + side * (500 - MARGIN4 - baseW / 2);
     for (const f of [1 / 3, 2 / 3]) {
       slots.push({ i: road.length, k });
@@ -377,6 +460,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
     road.push({ x: r10(X), y: r10(yb), w: r10(baseW) });
     road.push({ x: r10(X), y: r10(yb + E), w: r10(baseW) });
     turns.push({ bot: road.length - 2, top: road.length - 1 });
+    segs.push({ a: segA, b: road.length - 2 });
     len += E;
     y = yb + E;
     px = X;
@@ -394,7 +478,8 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   road.push({ x: r10(px + dir * dx), y: r10(y + fRise), w: r10(baseW * 0.95) });
 
   // Engelleri yerlere dağıt: önce kollar (geçişte tek), sonra fırlatıcı ve delikler
-  const [nH, nP, nA] = p.obst ?? OBSTACLES4[index];
+  // Dünya 1–3'ün farklı desenli etaplarında engel yok
+  const [nH, nP, nA] = p.obst ?? (world >= 4 ? OBSTACLES4[index] : [0, 0, 0]);
   // Kol geçişin ortasına (iki yerin arasına) konur ve geçişi tek başına kullanır
   type Kind = 'hole' | 'pop' | 'arm' | 'armB';
   const midOf = (i: number) => ({ x: (road[i].x + road[i + 1].x) / 2, y: (road[i].y + road[i + 1].y) / 2 });
@@ -438,8 +523,8 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
     }
   }
 
-  // U dönüşlerini kenara tam oturt
-  for (let it = 0; it < 6; it++) {
+  // U dönüşlerini kenara tam oturt (farklı desenli yollarda yok)
+  for (let it = 0; it < (p.shape === 'varied' ? 0 : 6); it++) {
     for (const tn of turns) {
       const ex = reach(road, tn.bot) - (500 - MARGIN4);
       for (const j of [tn.bot, tn.top]) road[j].x = r10(road[j].x - Math.sign(road[j].x - 500) * ex);
@@ -497,7 +582,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   // Rüzgâr: engelsiz geçişlerin ortasında, yolu yana iten bölgeler
   const wind: WindZone[] = [];
   if (p.wind) {
-    const kTotal = turns.length;
+    const kTotal = segs.length;
     const freeK: number[] = [];
     for (let kk = 1; kk < kTotal; kk++) if (!usedK.has(kk)) freeK.push(kk);
     // Yer yetmezse sadece delik olan geçişler de kullanılır (zamanlı engelle aynı yerde olmaz)
@@ -506,8 +591,8 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
     for (let c = 0; c < p.wind.n && (freeK.length || holeK.length); c++) {
       const pool = freeK.length ? freeK : holeK;
       const kk = pool.splice(Math.floor(R() * pool.length), 1)[0];
-      const a = road[turns[kk - 1].top];
-      const b = road[turns[kk].bot];
+      const a = road[segs[kk].a];
+      const b = road[segs[kk].b];
       const x0 = Math.min(a.x, b.x) + 120;
       const x1 = Math.max(a.x, b.x) - 120;
       const y0 = Math.min(a.y, b.y);
@@ -624,15 +709,15 @@ const NEW_PLANS: Plan[] = [
   // Dünya 1: geniş, kısa yollar; ilk aşağı dönüşü tanıtan yumuşak bir etap
   { world: 1, num: 11, name: 'Lale Bahçesi', index: 2, d: 2 / 9, prog: 0.03, boost: 1.5 },
   { world: 1, num: 12, name: 'Uçurtma', index: 3, d: 3 / 9, prog: 0.07, boost: 1.4 },
-  { world: 1, num: 13, name: 'Arı Yolu', index: 6, d: 5 / 9, prog: 0.1, boost: 1.35 },
+  { world: 1, num: 13, name: 'Arı Yolu', index: 6, d: 5 / 9, prog: 0.1, boost: 1.35, shape: 'varied', want: targetTime(0.1) },
   { world: 1, num: 14, name: 'Gökkuşağı', index: 7, d: 6 / 9, prog: 0.14, boost: 1.25 },
-  { world: 1, num: 15, name: 'Kır Çiçeği', index: 8, d: 7 / 9, prog: 0.19, boost: 1.15 },
+  { world: 1, num: 15, name: 'Kır Çiçeği', index: 8, d: 7 / 9, prog: 0.19, boost: 1.2, shape: 'varied', want: targetTime(0.19) },
   // Dünya 2: daha geniş, daha kısa orman yolları
   { world: 2, num: 11, name: 'Kozalak', index: 0, d: 0, prog: oldProg(1, 9), boost: 1.2 },
   { world: 2, num: 12, name: 'Geyik Patikası', index: 1, d: 1 / 9, prog: oldProg(2, 1), boost: 1.15 },
-  { world: 2, num: 13, name: 'Eğreltiotu', index: 3, d: 2 / 9, prog: oldProg(2, 3), boost: 1.12 },
+  { world: 2, num: 13, name: 'Eğreltiotu', index: 3, d: 2 / 9, prog: oldProg(2, 3), boost: 1.1, shape: 'varied', want: targetTime(oldProg(2, 3)) },
   { world: 2, num: 14, name: 'Ağaçkakan', index: 5, d: 4 / 9, prog: oldProg(2, 5), boost: 1.1 },
-  { world: 2, num: 15, name: 'Dere Kenarı', index: 7, d: 6 / 9, prog: oldProg(2, 7), boost: 1.08 },
+  { world: 2, num: 15, name: 'Dere Kenarı', index: 7, d: 6 / 9, prog: oldProg(2, 7), boost: 1.0, shape: 'varied', want: targetTime(oldProg(2, 7)) },
   // Dünya 3: kısa yollu, biraz daha geniş bahçe etapları
   { world: 3, num: 11, name: 'Taş Köprü', index: 0, d: 0, prog: oldProg(2, 9), boost: 1.15 },
   { world: 3, num: 12, name: 'Lavanta', index: 1, d: 1 / 9, prog: oldProg(3, 1), boost: 1.12 },
@@ -641,9 +726,9 @@ const NEW_PLANS: Plan[] = [
   { world: 3, num: 15, name: 'Sarı Gül', index: 7, d: 7 / 9, prog: oldProg(3, 7), boost: 1.05 },
   // Dünya 4: daha az engelli, daha kısa göl etapları
   { world: 4, num: 11, name: 'Kamışlık', index: 0, d: 0, prog: 1, boost: 1.05, obst: [2, 0, 0], want: 40 },
-  { world: 4, num: 12, name: 'Balıkçı', index: 1, d: 0.05, prog: 1, boost: 1.05, obst: [2, 1, 0], want: 46 },
+  { world: 4, num: 12, name: 'Balıkçı', index: 1, d: 0.05, prog: 1, boost: 1.05, obst: [2, 1, 0], want: 46, shape: 'varied' },
   { world: 4, num: 13, name: 'Martı', index: 3, d: 0.15, prog: 1, obst: [1, 1, 1], want: 52 },
-  { world: 4, num: 14, name: 'Su Kuşu', index: 5, d: 0.4, prog: 1, obst: [2, 1, 2], want: 58 },
+  { world: 4, num: 14, name: 'Su Kuşu', index: 5, d: 0.4, prog: 1, obst: [2, 1, 2], want: 58, shape: 'varied' },
   { world: 4, num: 15, name: 'Yakamoz', index: 7, d: 0.6, prog: 1, obst: [2, 2, 2], want: 64 },
 ];
 
@@ -666,8 +751,15 @@ const W5: { obst: [number, number, number]; wind: Plan['wind'] }[] = [
   { obst: [3, 2, 1], wind: { n: 3, force: 0.32, pulse: true } },
   { obst: [3, 2, 2], wind: { n: 4, force: 0.34, pulse: true } },
 ];
+/** Farklı desenli (zikzak olmayan) etaplar: dünyadaki sıra (0'dan) */
+const VARIED_IDX = [2, 5, 8, 11, 13];
+// Rüzgâr ilerledikçe güçlenir (oyun testi: etkisi azdı): 0,2 → 0,5
 W5.forEach((c, i) =>
-  NEW_PLANS.push({ world: 5, num: i + 1, name: W5_NAMES[i], index: i, d: i / 14, prog: 1, boost: lerp(1.05, 0.98, i / 14), obst: c.obst, wind: c.wind, want: lerp(48, 78, i / 14) }),
+  NEW_PLANS.push({
+    world: 5, num: i + 1, name: W5_NAMES[i], index: i, d: i / 14, prog: 1, boost: lerp(1.05, 0.98, i / 14), obst: c.obst,
+    wind: { ...c.wind!, force: Math.round(lerp(0.2, 0.5, i / 14) * 100) / 100 }, want: lerp(48, 78, i / 14),
+    ...(VARIED_IDX.includes(i) ? { shape: 'varied' as const } : {}),
+  }),
 );
 
 /** Dünya 6 (Karlı Zirve): rüzgâr ve bütün engeller bir arada, en uzun yollar */
@@ -690,7 +782,12 @@ const W6: { obst: [number, number, number]; wind: Plan['wind'] }[] = [
   { obst: [5, 3, 4], wind: { n: 2, force: 0.35, pulse: true } },
 ];
 W6.forEach((c, i) =>
-  NEW_PLANS.push({ world: 6, num: i + 1, name: W6_NAMES[i], index: i, d: lerp(0.3, 1, i / 14), prog: 1, boost: lerp(1.0, 0.95, i / 14), obst: c.obst, wind: c.wind, want: lerp(60, 90, i / 14) }),
+  NEW_PLANS.push({
+    world: 6, num: i + 1, name: W6_NAMES[i], index: i, d: lerp(0.3, 1, i / 14), prog: 1, boost: lerp(1.0, 0.95, i / 14), obst: c.obst,
+    wind: { ...c.wind!, force: Math.round(lerp(0.3, 0.45, i / 14) * 100) / 100 }, want: lerp(60, 90, i / 14),
+    // 9 ve 12'de engel çok: karışık desen sığmıyor, zikzak kalır
+    ...([2, 5, 13].includes(i) ? { shape: 'varied' as const } : {}),
+  }),
 );
 
 mkdirSync(OUT, { recursive: true });
@@ -710,7 +807,7 @@ for (const plan of plans) {
     let scale = 1;
     for (let attempt = 0; attempt < 150 && !done; attempt++) {
       const seed = world * 1000 + index * 37 + attempt * 7919 + (plan.num && plan.num !== index + 1 ? plan.num * 101 : 0);
-      const level = world >= 4 ? buildWorld4(plan, seed, scale) : buildLevel(plan, seed, scale);
+      const level = world >= 4 || plan.shape ? buildWorld4(plan, seed, scale) : buildLevel(plan, seed, scale);
       const v0 = validateLevel({ ...level, timeTargets: { gold: 1, silver: 2, bronze: 3 } });
       if (!v0.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: geçersiz ${v0.errors.join('; ')}\n`);

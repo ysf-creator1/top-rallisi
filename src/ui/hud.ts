@@ -1,6 +1,7 @@
 // Oyun üstü göstergeler: süre, yıldızlar, etap etiketi, hayalet farkı, ipuçları.
 
 import { timeStars } from '../config/scoring';
+import { LEVELS } from '../game/levels';
 import type { LevelData } from '../game/levels/types';
 import { formatDelta, formatTime, t } from '../i18n';
 import type { App } from './app';
@@ -76,7 +77,9 @@ export class Hud {
     this.applySide();
     // Rüzgâr etiketleri
     this.windLayer.innerHTML = '';
-    this.windEls = (level.wind ?? []).map((w) => {
+    // "rüzgâr" yazısı sadece rüzgârın tanıtıldığı ilk etapta (sonra çizgiler yeterli)
+    const introWind = LEVELS.find((l) => l.wind?.length)?.id === level.id;
+    this.windEls = (introWind ? (level.wind ?? []) : []).map((w) => {
       const el = h('div.wind-label', [t('hud.wind'), svg(w.force < 0 ? icons.arrowLeft(14) : icons.arrowRight(14))]);
       this.windLayer.append(el);
       return el;
