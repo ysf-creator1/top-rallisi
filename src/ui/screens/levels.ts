@@ -1,4 +1,4 @@
-// Etap seçimi: etap kartları (en iyi süre, süre yıldızları, toplanan yıldızlar).
+// Etap seçimi: etap kartları (en iyi süre, süreye göre kazanılan yıldızlar).
 
 import { levelsOfWorld } from '../../game/levels';
 import { formatTime, t } from '../../i18n';
@@ -16,10 +16,10 @@ export function levelsScreen(app: App, world: number): HTMLElement {
     const isNext = unlocked && !rec?.completed && !nextMarked;
     if (isNext) nextMarked = true;
     const tStars = rec?.timeStars ?? 0;
-    const collected = rec?.stars.filter(Boolean).length ?? 0;
     const best = rec?.best ?? null;
     const bestA = rec?.bestAssist ?? null;
-    const starsEl = h('div.mini-stars', [svg(icons.medal(20, tStars))]);
+    // Süreye göre kazanılan yıldızlar (1–3)
+    const starsEl = h('div.mini-stars', { html: [0, 1, 2].map((k) => icons.star(13, k < tStars)).join('') });
     const bestEl = h('div.best');
     if (!unlocked) bestEl.append(t('levels.locked'));
     else if (best) bestEl.append(t('levels.best'), h('b', formatTime(best.time)));
@@ -33,7 +33,6 @@ export function levelsScreen(app: App, world: number): HTMLElement {
         h('div.num', [h('b', String(i + 1)), unlocked ? starsEl : svg(icons.lock(16, '#B9B4AC'))]),
         h('div.name', l.name),
         bestEl,
-        unlocked && rec ? h('div.collect-dots', [svg(icons.star(12)), `${collected}/3`]) : null,
       ],
     );
   });

@@ -138,7 +138,7 @@ export class DevPanel {
       },
     }, t('dev.autopilot'));
     const themeRow = h('div.btnrow', [this.autopilotBtn]);
-    for (const th of ['gunduz', 'aksam'] as ThemeId[]) {
+    for (const th of ['gunduz', 'aksam', 'sonbahar', 'kis'] as ThemeId[]) {
       themeRow.append(h('button', {
         onclick: () => {
           this.app.themeOverride = th;

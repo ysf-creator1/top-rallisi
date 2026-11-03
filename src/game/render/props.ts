@@ -172,7 +172,7 @@ export class Props {
         g.add(m);
         streaks.push({ m, y, speed: 2.4 + (i % 3) * 0.6, phase: (i * 0.37) % 1, len });
       }
-      const leafMat = matte('#B3A3E0', { side: THREE.DoubleSide });
+      const leafMat = matte('#F2C46D', { side: THREE.DoubleSide });
       const leaves: THREE.Mesh[] = [];
       for (let i = 0; i < 2; i++) {
         const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.09, 10), leafMat);

@@ -1,6 +1,6 @@
 // Sahne ve arayüz renkleri (docs/TASARIM_REHBERI.md). Sahne renkleri temadan okunur.
 
-export type ThemeId = 'gunduz' | 'aksam';
+export type ThemeId = 'gunduz' | 'aksam' | 'sonbahar' | 'kis';
 
 export interface SceneTheme {
   id: ThemeId;
@@ -98,11 +98,75 @@ export const THEMES: Record<ThemeId, SceneTheme> = {
     accentText: '#36334A',
     flag: '#B3A3E0',
   },
+  // Dünya 5: sonbahar tepesi (turuncu ve kızıl ağaçlar, altın çimen)
+  sonbahar: {
+    id: 'sonbahar',
+    sky: ['#BFD8E6', '#E9E6DA', '#F7E6CF'],
+    sunGlow: '#FFF0D6',
+    sunDisc: '#FFF5E4',
+    hills: '#DCCFA6',
+    hillsFar: '#E2D8B8',
+    treesFar: '#E3B27E',
+    treesNear: '#D98E5F',
+    treesNearShade: '#C77B52',
+    treesHighlight: '#EBB487',
+    trunk: '#8F7462',
+    grass: ['#D9D29A', '#CFC78C'],
+    path: '#F0E3CC',
+    standLight: '#E9C9A0',
+    standDark: '#C9A27A',
+    base: '#3D3A38',
+    baseTop: '#5D5752',
+    fog: '#EFE6D8',
+    hemiSky: '#BFD8E6',
+    hemiGround: '#D9D29A',
+    sunColor: '#FFEBD2',
+    sunIntensity: 2.0,
+    hemiIntensity: 1.5,
+    exposure: 1.0,
+    lampGlow: '#F7EFD9',
+    lampOn: false,
+    accent: '#E8A57E',
+    accentText: '#3E2C22',
+    flag: '#D9774F',
+  },
+  // Dünya 6: karlı zirve (beyaz zemin, mavimsi çamlar)
+  kis: {
+    id: 'kis',
+    sky: ['#BFD6EA', '#E3ECF3', '#F3F6F8'],
+    sunGlow: '#F4F8FF',
+    sunDisc: '#FFFFFF',
+    hills: '#E4ECF2',
+    hillsFar: '#EDF2F6',
+    treesFar: '#9DB8C0',
+    treesNear: '#7FA2A6',
+    treesNearShade: '#6F9296',
+    treesHighlight: '#D9E7EC',
+    trunk: '#8A7E78',
+    grass: ['#F1F5F8', '#E6EDF2'],
+    path: '#DCE5EC',
+    standLight: '#C9DCEB',
+    standDark: '#9FBCD3',
+    base: '#363B44',
+    baseTop: '#555C68',
+    fog: '#EAF0F5',
+    hemiSky: '#BFD6EA',
+    hemiGround: '#EEF3F7',
+    sunColor: '#F6F9FF',
+    sunIntensity: 1.9,
+    hemiIntensity: 1.5,
+    exposure: 0.97,
+    lampGlow: '#FFE8BE',
+    lampOn: true,
+    accent: '#9CC3E0',
+    accentText: '#243444',
+    flag: '#E8907E',
+  },
 };
 
-/** Dünyaya göre tema (Dünya 4 akşam). */
+/** Dünyaya göre tema (Dünya 4 akşam, 5 sonbahar, 6 kış). */
 export function themeForWorld(world: number): ThemeId {
-  return world >= 4 ? 'aksam' : 'gunduz';
+  return world >= 6 ? 'kis' : world === 5 ? 'sonbahar' : world === 4 ? 'aksam' : 'gunduz';
 }
 
 export type TrackColorId = 'black' | 'anthracite' | 'navy' | 'forest' | 'burgundy' | 'walnut' | 'lavender' | 'mint';

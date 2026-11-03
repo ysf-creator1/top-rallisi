@@ -38,6 +38,16 @@ body[data-theme='aksam'] {
   --text: #36334a;
 }
 
+body[data-theme='sonbahar'] {
+  --accent: #e8a57e;
+  --accent-text: #3e2c22;
+}
+
+body[data-theme='kis'] {
+  --accent: #9cc3e0;
+  --accent-text: #243444;
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -525,14 +535,15 @@ body[data-theme='aksam'] .screen {
   pointer-events: none;
 }
 .level-chip {
-  height: 26px;
-  padding: 0 12px;
-  border-radius: 13px;
-  background: rgba(251, 248, 242, 0.7);
-  font-size: 12px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: rgba(251, 248, 242, 0.88);
+  box-shadow: 0 2px 8px rgba(40, 46, 52, 0.08);
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #5a6068;
+  letter-spacing: 0.05em;
+  color: #3b3f45;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -869,6 +880,49 @@ body[data-theme='aksam'] .end::before {
   background: #efeaf8;
   color: #5b4f8a;
 }
+.star-goals {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.star-goal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  background: #f1ece3;
+  color: #5a6068;
+  font-size: 14px;
+}
+.star-goal b {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.star-goal .sg-stars {
+  display: flex;
+  gap: 1px;
+}
+.star-goal.got {
+  background: #e6f3ec;
+  color: #3e7a62;
+}
+.star-goal.capped {
+  opacity: 0.5;
+}
+.live-stars {
+  gap: 2px;
+  padding: 0 12px;
+}
+.live-stars .ls {
+  display: flex;
+  transition: opacity 400ms var(--ease), filter 400ms var(--ease);
+}
+.live-stars .ls.off {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
 .end-next {
   font-size: 14px;
   font-weight: 700;
@@ -882,7 +936,7 @@ body[data-theme='aksam'] .end::before {
 .end-boxes {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 .end-box {
@@ -1070,6 +1124,26 @@ body[data-theme='aksam'] .end::before {
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
+}
+.lock-chip.two-line {
+  height: auto;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 16px;
+}
+.lock-chip.two-line span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.world-info .lock-chip.two-line b {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+.lock-chip.two-line small {
+  font-size: 11px;
+  font-weight: 700;
 }
 .level-grid {
   display: grid;

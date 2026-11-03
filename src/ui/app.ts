@@ -2,7 +2,7 @@
 
 import { ASSIST, type BallType } from '../config/physics';
 import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
-import { themeForWorld, trackHex, type ThemeId } from '../config/theme';
+import { THEMES, themeForWorld, trackHex, type ThemeId } from '../config/theme';
 import { parseGhost, type GhostData } from '../game/ghost';
 import { KeyboardInput } from '../game/input/keyboard';
 import { RopeInput } from '../game/input/ropes';
@@ -100,7 +100,7 @@ export class App {
     this.stage.append(this.hud.el);
 
     const th = getQueryParam('theme');
-    if (th === 'aksam' || th === 'gunduz') this.themeOverride = th;
+    if (th && th in THEMES) this.themeOverride = th as ThemeId;
 
     this.applySettings();
     this.dev = getQueryParam('dev') === '1' ? new DevPanel(this) : null;
@@ -314,16 +314,23 @@ export class App {
   /** Dünya/etap kilidi */
   totalStars(): number {
     let n = 0;
-    // Sadece yoldan toplanan yıldızlar (süre ödülü madalyadır, yıldız sayılmaz)
-    for (const r of Object.values(this.save.data.levels)) n += (r.stars ?? []).filter(Boolean).length;
+    // Yıldızlar süreye göre: her etabın en iyi yıldız sayısı (1–3)
+    for (const l of LEVELS) n += this.save.data.levels[l.id]?.timeStars ?? 0;
     return n;
+  }
+
+  /** Bir dünyadaki toplam yıldız */
+  worldStars(world: number): number {
+    return levelsOfWorld(world).reduce((n, l) => n + (this.save.data.levels[l.id]?.timeStars ?? 0), 0);
   }
 
   worldUnlocked(world: number): boolean {
     if (this.dev?.unlockAll) return true;
     if (!PLAYABLE_WORLDS.includes(world)) return false;
     if (this.totalStars() >= (WORLD_UNLOCK[world] ?? Infinity)) return true;
-    // Dünya 4: önceki dünyanın bütün etaplarını bitiren de açar
+    // Daha önce açılıp oynanmış dünya kurallar değişse de kilitlenmez
+    if (levelsOfWorld(world).some((l) => this.save.data.levels[l.id]?.completed)) return true;
+    // Önceki dünyanın bütün etaplarını bitiren de açar
     const prev = levelsOfWorld(world - 1);
     return UNLOCK_BY_COMPLETION.includes(world) && prev.length > 0 && prev.every((l) => this.save.data.levels[l.id]?.completed);
   }
@@ -334,6 +341,8 @@ export class App {
     const list = levelsOfWorld(level.world);
     const i = list.findIndex((l) => l.id === level.id);
     if (i <= 0) return true;
+    // Bitirilmiş etap hep açık kalır (araya yeni etap eklenince de)
+    if (this.save.data.levels[level.id]?.completed) return true;
     return !!this.save.data.levels[list[i - 1].id]?.completed;
   }
 
@@ -384,7 +393,6 @@ export class App {
       this.keys,
       {
         onStart: () => this.hud.hideHint(),
-        onStar: () => this.hud.bumpStars(),
         onCheckpoint: () => this.hud.flash(t('hud.checkpoint'), 'ok'),
         onFall: (cause) => {
           const fromCp = !!this.session && this.session.sim.lastCheckpoint >= 0;
@@ -528,7 +536,6 @@ export class App {
       time: r.time,
       falls: r.falls,
       timeStars: tStars,
-      collected: r.stars.filter(Boolean).length,
       earned,
       prevBest: prevBest ?? null,
       isRecord,
@@ -555,7 +562,7 @@ export class App {
   }
 
   levelLabel(level: LevelData): string {
-    return t('hud.level', { world: t(`world.short.${level.world}`), n: levelNumber(level) });
+    return t('hud.level', { world: t(`world.short.${level.world}`), n: levelNumber(level), total: levelsOfWorld(level.world).length });
   }
 
   confirm(text: string, yes: string, onYes: () => void): void {
@@ -580,6 +587,7 @@ function obstacleHint(level: LevelData): string | null {
     ['arm', (l: LevelData) => !!l.arms?.length],
     ['pop', (l: LevelData) => !!l.poppers?.length],
     ['hole', (l: LevelData) => !!l.holes?.length],
+    ['wind', (l: LevelData) => !!l.wind?.length],
   ] as const;
   for (const [k, has] of kinds) {
     if (has(level) && LEVELS.find(has)?.id === level.id) return `hint.${k}`;

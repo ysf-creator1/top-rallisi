@@ -8,25 +8,39 @@ export interface TimeTargets {
   gold: number;
 }
 
-/** Taban puan: süre yıldızı sayısına göre [0, 1, 2, 3] */
-export const BASE_POINTS = [0, 50, 80, 120];
-/** Toplanan her yıldız için ek puan */
+/** Taban puan: yıldız sayısına göre [0, 1, 2, 3] (yoldan yıldız toplama kalkınca artırıldı) */
+export const BASE_POINTS = [0, 60, 120, 180];
+/** Eski kayıtlardaki yoldan toplanmış yıldızlar için puan (artık yeni yıldız toplanmıyor) */
 export const STAR_POINTS = 20;
 /** Bronz süreden kazanılan her saniye için bonus */
 export const TIME_BONUS_PER_SEC = 2;
 
-/** Dünya kilidi: o dünyayı açmak için gereken toplam yıldız */
-/** Dünya kilidi: yoldan toplanan yıldız sayısı (süre madalyaları sayılmaz) */
-export const WORLD_UNLOCK: Record<number, number> = { 1: 0, 2: 10, 3: 25, 4: 40 };
-/** Oynanabilir dünyalar (ilk sürüm) */
-export const PLAYABLE_WORLDS = [1, 2, 3, 4];
+/**
+ * Dünya kilidi: o dünyayı açmak için gereken toplam yıldız (her etapta en çok 3,
+ * bitiren en az 1 yıldız alır). Bir dünyada 15 etap var, yani en çok 45 yıldız.
+ */
+export const WORLD_UNLOCK: Record<number, number> = { 1: 0, 2: 20, 3: 50, 4: 85, 5: 125, 6: 165 };
+/** Oynanabilir dünyalar */
+export const PLAYABLE_WORLDS = [1, 2, 3, 4, 5, 6];
 /** Haritada "Yakında" olarak görünen dünyalar */
 export const SOON_WORLDS: number[] = [];
 /** Bu dünyalar, yıldız yetmese de önceki dünyanın bütün etapları bitince de açılır */
-export const UNLOCK_BY_COMPLETION = [4];
-export const LEVELS_PER_WORLD = 10;
+export const UNLOCK_BY_COMPLETION = [2, 3, 4, 5, 6];
+export const LEVELS_PER_WORLD = 15;
 
-/** Süre yıldızı: bitirmek 1, gümüş 2, altın 3 (yardım modunda en fazla 2). */
+/**
+ * Bot süresinden yıldız süreleri (5 sn'ye yukarı yuvarlanır, akılda kalsın):
+ * 3 yıldız bot ×1,5, 2 yıldız bot ×2,1. "bronze" sadece zaman bonusu için (bot ×3).
+ */
+export function timeTargetsFromBot(bot: number): TimeTargets {
+  const up5 = (x: number) => Math.ceil(x / 5 - 1e-9) * 5;
+  const gold = up5(bot * 1.5);
+  const silver = Math.max(gold + 5, up5(bot * 2.1));
+  const bronze = Math.max(silver + 5, up5(bot * 3));
+  return { gold, silver, bronze };
+}
+
+/** Yıldız: bitirmek 1, "silver" süresi 2, "gold" süresi 3 (yardım modunda en fazla 2). */
 export function timeStars(time: number, targets: TimeTargets, assist: boolean): number {
   let s = 1;
   if (time <= targets.silver) s = 2;

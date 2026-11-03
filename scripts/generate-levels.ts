@@ -10,16 +10,13 @@ import { buildRoute, runAutopilot, DEFAULT_AUTOPILOT } from '../src/game/autopil
 import { Simulation } from '../src/game/physics/sim';
 import { Track } from '../src/game/physics/track';
 import { crossings, validateLevel } from '../src/game/levels/validate';
-import type { Branch, LevelData, Popper, RoadPoint, SpinArm, TrapHole, VacuumZone } from '../src/game/levels/types';
+import type { Branch, LevelData, Popper, RoadPoint, SpinArm, TrapHole, VacuumZone, WindZone } from '../src/game/levels/types';
 import { hasTimedObstacles, safeSpot } from '../src/game/physics/obstacles';
+import { timeTargetsFromBot } from '../src/config/scoring';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'levels');
 const W = 1000;
 
-/** Bot süresinden hedefler: altın ×1,2, gümüş ×1,7, bronz ×2,6 */
-const GOLD = 1.2;
-const SILVER = 1.7;
-const BRONZE = 2.6;
 
 /**
  * Yeni başlayanlar için yol genişliği çarpanı (oyun testinden sonra eklendi):
@@ -55,7 +52,20 @@ const r10 = (x: number) => Math.round(x / 10) * 10;
 
 interface Plan {
   world: number;
+  /** Zorluk sırası (özellikler buna göre seçilir) */
   index: number;
+  /** Etap numarası (dosya adı); yoksa index + 1 */
+  num?: number;
+  /** Etap adı; yoksa NAMES tablosundan */
+  name?: string;
+  /** Yol genişliği çarpanı; yoksa WIDTH_BOOST tablosundan */
+  boost?: number;
+  /** Dünya 4–6: engel sayıları [delik, fırlatıcı, dönen kol] */
+  obst?: [number, number, number];
+  /** Dünya 5–6: rüzgâr bölgesi sayısı ve gücü (0..1 arası güç) */
+  wind?: { n: number; force: number; pulse?: boolean };
+  /** Hedef bot süresi (sn); yoksa ilerlemeden hesaplanır */
+  want?: number;
   /** 0..1 dünya içindeki zorluk */
   d: number;
   /** 0..1 bütün etaplar boyunca ilerleme (uzunluk buna göre artar) */
@@ -91,17 +101,20 @@ function reach(road: RoadPoint[], j: number): number {
 
 type TravKind = 'steep' | 'flat' | 'down';
 
+const idOf = (p: Plan) => `w${p.world}-${String(p.num ?? p.index + 1).padStart(2, '0')}`;
+const nameOf = (p: Plan) => p.name ?? NAMES[p.world][p.index];
+
 function buildLevel(p: Plan, seed: number, lenScale: number): LevelData {
   const R = rng(seed);
   const { world, index, d, prog } = p;
-  const id = `w${world}-${String(index + 1).padStart(2, '0')}`;
-  const boost = WIDTH_BOOST[world]?.[index] ?? 1;
+  const id = idOf(p);
+  const boost = p.boost ?? WIDTH_BOOST[world]?.[index] ?? 1;
 
   // Dünya ve zorluğa göre ölçüler
   const baseW = (world === 1 ? lerp(250, 190, d) : world === 2 ? lerp(210, 175, d) : lerp(200, 175, d)) * boost;
   const narrowW = (world === 2 ? lerp(150, 115, d) : world === 3 ? lerp(140, 115, d) : baseW / boost) * boost;
   // Yolun hedef uzunluğu (bot hızı ~150 birim/sn varsayımıyla; süre tutmazsa ölçek düzeltilir)
-  const wantLen = targetTime(prog) * 150 * lenScale;
+  const wantLen = (p.want ?? targetTime(prog)) * 150 * lenScale;
   // Yatık çıkış ve iniş olasılıkları
   const pFlat = world === 1 && index < 3 ? 0.4 : lerp(0.5, 0.65, prog);
   const pDown = world === 1 ? (index < 3 ? 0 : index < 6 ? 0.18 : 0.25) : 0.25;
@@ -263,7 +276,7 @@ function buildLevel(p: Plan, seed: number, lenScale: number): LevelData {
 
   const level: LevelData = {
     id,
-    name: NAMES[world][index],
+    name: nameOf(p),
     world,
     height,
     boardWidth: W,
@@ -330,9 +343,9 @@ const OBSTACLES4: [number, number, number][] = [
 function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   const R = rng(seed);
   const { world, index, d } = p;
-  const id = `w${world}-${String(index + 1).padStart(2, '0')}`;
-  const baseW = lerp(205, 185, d);
-  const wantLen = lerp(46, 64, d) * 150 * lenScale;
+  const id = idOf(p);
+  const baseW = lerp(205, 185, d) * (p.boost ?? 1);
+  const wantLen = (p.want !== undefined ? p.want * 0.88 : lerp(46, 64, d)) * 150 * lenScale;
   const rise = (k: TravKind) => (k === 'steep' ? lerp(300, 400, R()) : k === 'flat' ? lerp(170, 260, R()) : -lerp(140, 240, R()));
   // Çıkış, iniş, çıkış, iniş...: iniş ardışık olmaz ama sık gelir
   const pick = (prev: TravKind): TravKind => (prev !== 'down' && R() < 0.6 ? 'down' : R() < 0.55 ? 'flat' : 'steep');
@@ -381,7 +394,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   road.push({ x: r10(px + dir * dx), y: r10(y + fRise), w: r10(baseW * 0.95) });
 
   // Engelleri yerlere dağıt: önce kollar (geçişte tek), sonra fırlatıcı ve delikler
-  const [nH, nP, nA] = OBSTACLES4[index];
+  const [nH, nP, nA] = p.obst ?? OBSTACLES4[index];
   // Kol geçişin ortasına (iki yerin arasına) konur ve geçişi tek başına kullanır
   type Kind = 'hole' | 'pop' | 'arm' | 'armB';
   const midOf = (i: number) => ({ x: (road[i].x + road[i + 1].x) / 2, y: (road[i].y + road[i + 1].y) / 2 });
@@ -419,7 +432,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
     if (kd === 'arm' || kd === 'armB') road[i].w = 250;
     else if (kd === 'pop') road[i].w = r10(baseW);
     else {
-      const v = index < 2 ? (R() < 0.5 ? 'center' : 'side') : (['center', 'side', 'pair'] as const)[Math.floor(R() * 3)];
+      const v = index < 2 || (p.obst && d < 0.15) ? (R() < 0.5 ? 'center' : 'side') : (['center', 'side', 'pair'] as const)[Math.floor(R() * 3)];
       holeVariant.set(i, v);
       road[i].w = v === 'center' ? 270 : v === 'side' ? 230 : 290;
     }
@@ -439,7 +452,7 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
   const height = r10(last.y + 140);
   const topY = last.y;
   const finishHole = { x: last.x, y: last.y, r: 46 };
-  const base: LevelData = { id, name: NAMES[world][index], world, height, boardWidth: W, road, finishHole, stars: [], timeTargets: { bronze: 3, silver: 2, gold: 1 } };
+  const base: LevelData = { id, name: nameOf(p), world, height, boardWidth: W, road, finishHole, stars: [], timeTargets: { bronze: 3, silver: 2, gold: 1 } };
   const mainLine = new Track(base).main;
 
   // Engeller: yolun o noktadaki dik yönüne göre yerleştirilir
@@ -481,7 +494,39 @@ function buildWorld4(p: Plan, seed: number, lenScale: number): LevelData {
       }
     }
   }
-  const obst = { ...base, holes, poppers, arms };
+  // Rüzgâr: engelsiz geçişlerin ortasında, yolu yana iten bölgeler
+  const wind: WindZone[] = [];
+  if (p.wind) {
+    const kTotal = turns.length;
+    const freeK: number[] = [];
+    for (let kk = 1; kk < kTotal; kk++) if (!usedK.has(kk)) freeK.push(kk);
+    // Yer yetmezse sadece delik olan geçişler de kullanılır (zamanlı engelle aynı yerde olmaz)
+    const holeK: number[] = [];
+    for (let kk = 1; kk < kTotal; kk++) if (usedK.get(kk)?.every((x) => x === 'hole')) holeK.push(kk);
+    for (let c = 0; c < p.wind.n && (freeK.length || holeK.length); c++) {
+      const pool = freeK.length ? freeK : holeK;
+      const kk = pool.splice(Math.floor(R() * pool.length), 1)[0];
+      const a = road[turns[kk - 1].top];
+      const b = road[turns[kk].bot];
+      const x0 = Math.min(a.x, b.x) + 120;
+      const x1 = Math.max(a.x, b.x) - 120;
+      const y0 = Math.min(a.y, b.y);
+      const y1 = Math.max(a.y, b.y);
+      const hgt = Math.max(160, (y1 - y0) * 0.6);
+      const ym = (y0 + y1) / 2;
+      if (x1 - x0 < 200) continue;
+      const f = Math.round(p.wind.force * lerp(0.85, 1.1, R()) * 100) / 100;
+      wind.push({
+        x: r10(x0),
+        y: r10(ym - hgt / 2),
+        w: r10(x1 - x0),
+        h: r10(hgt),
+        force: R() < 0.5 ? -f : f,
+        ...(p.wind.pulse ? { pulse: Math.round(lerp(2.6, 3.4, R()) * 10) / 10 } : {}),
+      });
+    }
+  }
+  const obst = { ...base, holes, poppers, arms, ...(wind.length ? { wind } : {}) };
 
   // Kontrol noktaları: yolun tek geçtiği, engelden uzak yükseklikler
   const once = (cy: number) => {
@@ -540,7 +585,9 @@ function evaluate(level: LevelData, plan: Plan): { ok: boolean; time: number; fa
   const wantBranches = plan.world === 3 ? (plan.d > 0.5 ? 2 : 1) : 0;
   if ((level.branches?.length ?? 0) < wantBranches) return { ok: false, time: 0, falls: 0, reason: 'kısa yola yer yok' };
   // Dünya 4: istenen sayıda dönen kol yerleşmeli (bot kolsuz denemeleri seçmesin)
-  if (plan.world === 4 && (level.arms?.length ?? 0) < OBSTACLES4[plan.index][2]) return { ok: false, time: 0, falls: 0, reason: 'kola yer yok' };
+  const wantArms = plan.world >= 4 ? (plan.obst ?? OBSTACLES4[plan.index])[2] : 0;
+  if ((level.arms?.length ?? 0) < wantArms) return { ok: false, time: 0, falls: 0, reason: 'kola yer yok' };
+  if (plan.wind && (level.wind?.length ?? 0) < plan.wind.n) return { ok: false, time: 0, falls: 0, reason: 'rüzgâra yer yok' };
   const res = runAutopilot(new Simulation(level, { ball: 'standard', assist: false }), DEFAULT_AUTOPILOT, 200);
   if (!res.finished) return { ok: false, time: 0, falls: res.falls, reason: 'bitmedi' };
   if (res.falls > 0) return { ok: false, time: res.time, falls: res.falls, reason: 'düştü' };
@@ -561,20 +608,109 @@ function evaluate(level: LevelData, plan: Plan): { ok: boolean; time: number; fa
   return { ok: true, time: res.time, falls: 0 };
 }
 
-mkdirSync(OUT, { recursive: true });
-const only = process.argv[2];
-let total = 0;
+// ---------- Etap listesi ----------
+// Eski 40 etap (w1-01..w4-10) bu listeyle üretilmişti; yeniden üretilmezler
+// (oyuncu kayıtları ve rekorlar onlara bağlı). Yeni etaplar NEW_PLANS içinde.
+const OLD_PLANS: Plan[] = [];
 for (const world of [1, 2, 3, 4]) {
   for (let index = 0; index < 10; index++) {
-    const plan: Plan = { world, index, d: index / 9, prog: Math.min(1, ((world - 1) * 10 + index) / 29) };
-    const want = world === 4 ? targetTime4(plan.d) : targetTime(plan.prog);
-    const lid = `w${world}-${String(index + 1).padStart(2, '0')}`;
-    if (only && !lid.startsWith(only)) continue;
+    OLD_PLANS.push({ world, index, d: index / 9, prog: Math.min(1, ((world - 1) * 10 + index) / 29) });
+  }
+}
+const oldProg = (world: number, index: number) => Math.min(1, ((world - 1) * 10 + index) / 29);
+
+/** Dünya 1–4'e eklenen kolay etaplar: zor etapların önüne konur (sıra: src/game/levels/order.ts) */
+const NEW_PLANS: Plan[] = [
+  // Dünya 1: geniş, kısa yollar; ilk aşağı dönüşü tanıtan yumuşak bir etap
+  { world: 1, num: 11, name: 'Lale Bahçesi', index: 2, d: 2 / 9, prog: 0.03, boost: 1.5 },
+  { world: 1, num: 12, name: 'Uçurtma', index: 3, d: 3 / 9, prog: 0.07, boost: 1.4 },
+  { world: 1, num: 13, name: 'Arı Yolu', index: 6, d: 5 / 9, prog: 0.1, boost: 1.35 },
+  { world: 1, num: 14, name: 'Gökkuşağı', index: 7, d: 6 / 9, prog: 0.14, boost: 1.25 },
+  { world: 1, num: 15, name: 'Kır Çiçeği', index: 8, d: 7 / 9, prog: 0.19, boost: 1.15 },
+  // Dünya 2: daha geniş, daha kısa orman yolları
+  { world: 2, num: 11, name: 'Kozalak', index: 0, d: 0, prog: oldProg(1, 9), boost: 1.2 },
+  { world: 2, num: 12, name: 'Geyik Patikası', index: 1, d: 1 / 9, prog: oldProg(2, 1), boost: 1.15 },
+  { world: 2, num: 13, name: 'Eğreltiotu', index: 3, d: 2 / 9, prog: oldProg(2, 3), boost: 1.12 },
+  { world: 2, num: 14, name: 'Ağaçkakan', index: 5, d: 4 / 9, prog: oldProg(2, 5), boost: 1.1 },
+  { world: 2, num: 15, name: 'Dere Kenarı', index: 7, d: 6 / 9, prog: oldProg(2, 7), boost: 1.08 },
+  // Dünya 3: kısa yollu, biraz daha geniş bahçe etapları
+  { world: 3, num: 11, name: 'Taş Köprü', index: 0, d: 0, prog: oldProg(2, 9), boost: 1.15 },
+  { world: 3, num: 12, name: 'Lavanta', index: 1, d: 1 / 9, prog: oldProg(3, 1), boost: 1.12 },
+  { world: 3, num: 13, name: 'Çardak', index: 3, d: 3 / 9, prog: oldProg(3, 3), boost: 1.1 },
+  { world: 3, num: 14, name: 'Gizemli Kapı', index: 5, d: 5 / 9, prog: oldProg(3, 5), boost: 1.08 },
+  { world: 3, num: 15, name: 'Sarı Gül', index: 7, d: 7 / 9, prog: oldProg(3, 7), boost: 1.05 },
+  // Dünya 4: daha az engelli, daha kısa göl etapları
+  { world: 4, num: 11, name: 'Kamışlık', index: 0, d: 0, prog: 1, boost: 1.05, obst: [2, 0, 0], want: 40 },
+  { world: 4, num: 12, name: 'Balıkçı', index: 1, d: 0.05, prog: 1, boost: 1.05, obst: [2, 1, 0], want: 46 },
+  { world: 4, num: 13, name: 'Martı', index: 3, d: 0.15, prog: 1, obst: [1, 1, 1], want: 52 },
+  { world: 4, num: 14, name: 'Su Kuşu', index: 5, d: 0.4, prog: 1, obst: [2, 1, 2], want: 58 },
+  { world: 4, num: 15, name: 'Yakamoz', index: 7, d: 0.6, prog: 1, obst: [2, 2, 2], want: 64 },
+];
+
+/** Dünya 5 (Rüzgârlı Tepe): rüzgâr bölgeleri; ikinci yarıda delik ve fırlatıcı da var */
+const W5_NAMES = ['Esinti', 'Yaprak Dökümü', 'Rüzgâr Kapısı', 'Uçan Yaprak', 'Kestane', 'Değirmen', 'Kızıl Akçaağaç', 'Poyraz', 'Bal Kabağı', 'Hasat', 'Savrulan Yaprak', 'Fırtına Öncesi', 'Kuzey Rüzgârı', 'Sonbahar Yolu', 'Tepe Zirvesi'];
+const W5: { obst: [number, number, number]; wind: Plan['wind'] }[] = [
+  { obst: [0, 0, 0], wind: { n: 1, force: 0.18 } },
+  { obst: [0, 0, 0], wind: { n: 2, force: 0.2 } },
+  { obst: [0, 0, 0], wind: { n: 2, force: 0.24 } },
+  { obst: [0, 0, 0], wind: { n: 3, force: 0.24 } },
+  { obst: [0, 0, 0], wind: { n: 2, force: 0.28, pulse: true } },
+  { obst: [0, 0, 0], wind: { n: 3, force: 0.28, pulse: true } },
+  { obst: [1, 0, 0], wind: { n: 2, force: 0.26 } },
+  { obst: [2, 0, 0], wind: { n: 3, force: 0.28, pulse: true } },
+  { obst: [2, 1, 0], wind: { n: 2, force: 0.3 } },
+  { obst: [2, 1, 0], wind: { n: 3, force: 0.3, pulse: true } },
+  { obst: [2, 2, 0], wind: { n: 3, force: 0.3 } },
+  { obst: [2, 1, 1], wind: { n: 2, force: 0.3, pulse: true } },
+  { obst: [3, 2, 1], wind: { n: 3, force: 0.32 } },
+  { obst: [3, 2, 1], wind: { n: 3, force: 0.32, pulse: true } },
+  { obst: [3, 2, 2], wind: { n: 4, force: 0.34, pulse: true } },
+];
+W5.forEach((c, i) =>
+  NEW_PLANS.push({ world: 5, num: i + 1, name: W5_NAMES[i], index: i, d: i / 14, prog: 1, boost: lerp(1.05, 0.98, i / 14), obst: c.obst, wind: c.wind, want: lerp(48, 78, i / 14) }),
+);
+
+/** Dünya 6 (Karlı Zirve): rüzgâr ve bütün engeller bir arada, en uzun yollar */
+const W6_NAMES = ['İlk Kar', 'Kartopu', 'Kızak', 'Kardan Adam', 'Buz Sarkıtı', 'Kar Tanesi', 'Ayaz', 'Dağ Evi', 'Tipi', 'Kayak Yolu', 'Buzul', 'Kutup Yıldızı', 'Çığ', 'Zirve Yolu', 'Karlı Zirve'];
+const W6: { obst: [number, number, number]; wind: Plan['wind'] }[] = [
+  { obst: [2, 1, 0], wind: { n: 1, force: 0.24 } },
+  { obst: [2, 1, 1], wind: { n: 1, force: 0.26 } },
+  { obst: [2, 2, 1], wind: { n: 2, force: 0.26 } },
+  { obst: [3, 1, 1], wind: { n: 2, force: 0.28, pulse: true } },
+  { obst: [2, 2, 2], wind: { n: 2, force: 0.28 } },
+  { obst: [3, 2, 2], wind: { n: 2, force: 0.3, pulse: true } },
+  { obst: [3, 2, 2], wind: { n: 3, force: 0.3 } },
+  { obst: [3, 3, 2], wind: { n: 2, force: 0.3, pulse: true } },
+  { obst: [3, 2, 3], wind: { n: 3, force: 0.32 } },
+  { obst: [4, 3, 2], wind: { n: 3, force: 0.32, pulse: true } },
+  { obst: [3, 3, 3], wind: { n: 2, force: 0.32 } },
+  { obst: [4, 3, 3], wind: { n: 3, force: 0.34, pulse: true } },
+  { obst: [4, 3, 3], wind: { n: 2, force: 0.34 } },
+  { obst: [4, 3, 4], wind: { n: 2, force: 0.35, pulse: true } },
+  { obst: [5, 3, 4], wind: { n: 2, force: 0.35, pulse: true } },
+];
+W6.forEach((c, i) =>
+  NEW_PLANS.push({ world: 6, num: i + 1, name: W6_NAMES[i], index: i, d: lerp(0.3, 1, i / 14), prog: 1, boost: lerp(1.0, 0.95, i / 14), obst: c.obst, wind: c.wind, want: lerp(60, 90, i / 14) }),
+);
+
+mkdirSync(OUT, { recursive: true });
+const only = process.argv[2];
+if (!only) {
+  process.stdout.write('Hangi etaplar? Örnek: npm run levels w5   (eski etaplar için tam ad gerekir: npm run levels w1-03)\n');
+  process.exit(1);
+}
+let total = 0;
+const plans = [...OLD_PLANS.filter((p) => idOf(p) === only), ...NEW_PLANS.filter((p) => idOf(p).startsWith(only))];
+for (const plan of plans) {
+  {
+    const { world, index } = plan;
+    const want = plan.want ?? (world === 4 ? targetTime4(plan.d) : targetTime(plan.prog));
+    const lid = idOf(plan);
     let done = false;
     let scale = 1;
     for (let attempt = 0; attempt < 150 && !done; attempt++) {
-      const seed = world * 1000 + index * 37 + attempt * 7919;
-      const level = world === 4 ? buildWorld4(plan, seed, scale) : buildLevel(plan, seed, scale);
+      const seed = world * 1000 + index * 37 + attempt * 7919 + (plan.num && plan.num !== index + 1 ? plan.num * 101 : 0);
+      const level = world >= 4 ? buildWorld4(plan, seed, scale) : buildLevel(plan, seed, scale);
       const v0 = validateLevel({ ...level, timeTargets: { gold: 1, silver: 2, bronze: 3 } });
       if (!v0.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: geçersiz ${v0.errors.join('; ')}\n`);
@@ -587,17 +723,15 @@ for (const world of [1, 2, 3, 4]) {
       }
       const t = ev.time;
       // Süre hedefin ±%6'i içinde olmalı; değilse uzunluk ölçeğini düzelt
-      const tol = world === 4 ? (attempt < 90 ? 0.1 : 0.18) : attempt < 90 ? 0.06 : 0.14;
+      const tol = world >= 4 ? (attempt < 90 ? 0.1 : 0.18) : attempt < 90 ? 0.06 : 0.14;
       if (Math.abs(t / want - 1) > tol) {
         scale *= Math.max(0.6, Math.min(1.6, want / t));
         process.stdout.write(`  ${level.id} tohum ${seed}: süre ${t.toFixed(1)} sn, hedef ${want.toFixed(0)} → ölçek ${scale.toFixed(2)}\n`);
         continue;
       }
-      level.timeTargets = {
-        gold: Math.ceil(t * GOLD),
-        silver: Math.ceil(t * SILVER),
-        bronze: Math.ceil(t * BRONZE),
-      };
+      level.timeTargets = timeTargetsFromBot(t);
+      // Yoldan yıldız toplama kalktı: yıldızlar süreye göre verilir
+      delete level.stars;
       const v = validateLevel(level);
       if (!v.ok) {
         process.stdout.write(`  ${level.id} tohum ${seed}: geçersiz ${v.errors.join('; ')}\n`);

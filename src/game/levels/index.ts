@@ -1,11 +1,12 @@
 // Etap listesi: src/levels/*.json dosyaları derleme sırasında pakete gömülür.
 
 import type { LevelData } from './types';
+import { orderKey } from './order';
 
 const modules = import.meta.glob<LevelData>('../../levels/*.json', { eager: true, import: 'default' });
 
 export const LEVELS: LevelData[] = Object.values(modules).sort((a, b) =>
-  a.world !== b.world ? a.world - b.world : a.id.localeCompare(b.id),
+  a.world !== b.world ? a.world - b.world : orderKey(a.id, a.world) - orderKey(b.id, b.world),
 );
 
 export function getLevel(id: string): LevelData | undefined {

@@ -1,5 +1,6 @@
 // Oyun üstü göstergeler: süre, yıldızlar, etap etiketi, hayalet farkı, ipuçları.
 
+import { timeStars } from '../config/scoring';
 import type { LevelData } from '../game/levels/types';
 import { formatDelta, formatTime, t } from '../i18n';
 import type { App } from './app';
@@ -23,11 +24,13 @@ export class Hud {
   private lastTimer = '';
   private toastTimer = 0;
   private assistTimer = 0;
-  private starTotal = 3;
+  private liveStars = -1;
+  private level: LevelData | null = null;
 
   constructor(private app: App) {
     this.timer = h('div.timer.glass', '00:00.0');
-    this.stars = h('div.chip.glass', [svg(icons.star(18)), h('span.count', '0/3')]);
+    // Canlı yıldız göstergesi: süre geçtikçe yıldızlar sönükleşir (3 → 2 → 1)
+    this.stars = h('div.chip.glass.live-stars', [0, 1, 2].map(() => h('span.ls', { html: icons.star(17) })));
     const pause = h('button.round-btn.glass', { 'aria-label': t('hud.pause'), onclick: () => app.pauseGame() }, [svg(icons.pause())]);
     this.label = h('div.level-chip', '');
     this.ghost = h('div.ghost-chip', '');
@@ -57,8 +60,9 @@ export class Hud {
   prepare(level: LevelData, ghost: boolean): void {
     this.label.textContent = this.app.levelLabel(level);
     if (this.app.save.data.settings.assist) this.label.append(svg(icons.assist(12)));
-    this.starTotal = (level.stars ?? []).length;
-    this.setStars(0);
+    this.level = level;
+    this.liveStars = -1;
+    this.setLiveStars(this.app.save.data.settings.assist ? 2 : 3);
     this.ghost.classList.toggle('show', false);
     this.ghost.dataset.on = ghost ? '1' : '';
     this.lastTimer = '';
@@ -126,15 +130,13 @@ export class Hud {
     }, 2500);
   }
 
-  setStars(n: number): void {
-    this.stars.querySelector('.count')!.textContent = `${n}/${this.starTotal}`;
-  }
-
-  bumpStars(): void {
-    const s = this.app.session;
-    if (!s) return;
-    this.setStars(s.starsCollected);
-    this.stars.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], { duration: 300, easing: 'ease-out' });
+  /** Şu anki süreyle kaç yıldız alınır (n); azalınca küçük bir sallanma */
+  private setLiveStars(n: number): void {
+    if (n === this.liveStars) return;
+    const drop = this.liveStars > n && this.liveStars > 0;
+    this.liveStars = n;
+    this.stars.querySelectorAll('.ls').forEach((el, i) => el.classList.toggle('off', i >= n));
+    if (drop) this.stars.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.9)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'ease-out' });
   }
 
   flash(text: string, kind: 'ok' | 'warn'): void {
@@ -152,6 +154,7 @@ export class Hud {
     if (txt !== this.lastTimer) {
       this.timer.textContent = txt;
       this.lastTimer = txt;
+      if (this.level) this.setLiveStars(timeStars(s.raceTime, this.level.timeTargets, s.opts.assist));
     }
     if (this.ghost.dataset.on) {
       const d = s.ghostDelta;

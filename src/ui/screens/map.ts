@@ -1,6 +1,6 @@
 // Dünya haritası: dünyalar, kilitler ve toplam yıldız.
 
-import { LEVELS_PER_WORLD, PLAYABLE_WORLDS, SOON_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK } from '../../config/scoring';
+import { PLAYABLE_WORLDS, SOON_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK } from '../../config/scoring';
 import { THEMES, themeForWorld } from '../../config/theme';
 import { levelsOfWorld } from '../../game/levels';
 import { t } from '../../i18n';
@@ -11,7 +11,7 @@ import { icons } from '../icons';
 /** Küçük park çizimi: gökyüzü, tepeler, ağaçlar ve kıvrımlı parkur */
 export function worldArt(world: number): string {
   const th = THEMES[themeForWorld(world)];
-  const trees: Record<number, number> = { 1: 5, 2: 11, 3: 7, 4: 6 };
+  const trees: Record<number, number> = { 1: 5, 2: 11, 3: 7, 4: 6, 5: 7, 6: 8 };
   const n = trees[world] ?? 6;
   let tr = '';
   for (let i = 0; i < n; i++) {
@@ -20,13 +20,20 @@ export function worldArt(world: number): string {
     tr += `<circle cx="${x}" cy="${78 - r * 0.4}" r="${r}" fill="${i % 2 ? th.treesNear : th.treesFar}"/>`;
   }
   const hedge = world === 3 ? `<rect x="0" y="84" width="360" height="10" rx="5" fill="${th.treesNearShade}"/>` : '';
+  // Dünya 5: rüzgâr çizgileri; Dünya 6: kar taneleri
+  const extra =
+    world === 5
+      ? `<g stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" opacity=".85" fill="none"><path d="M30 34 q30 -8 60 0"/><path d="M70 50 q34 -8 68 0"/><path d="M200 30 q26 -7 52 0"/></g>`
+      : world === 6
+        ? `<g fill="#FFFFFF">${[[40, 20], [90, 44], [140, 16], [210, 40], [250, 18], [340, 46], [26, 58], [190, 60]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6"/>`).join('')}</g>`
+        : '';
   const lamp = world === 4 ? `<rect x="318" y="40" width="3" height="50" fill="#8C939A"/><circle cx="319.5" cy="38" r="6" fill="${th.lampGlow}"/><circle cx="319.5" cy="38" r="16" fill="${th.lampGlow}" opacity=".35"/>` : '';
   return `<svg viewBox="0 0 360 112" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
 <defs><linearGradient id="wa${world}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${th.sky[0]}"/><stop offset=".6" stop-color="${th.sky[1]}"/><stop offset="1" stop-color="${th.sky[2]}"/></linearGradient></defs>
 <rect width="360" height="112" fill="url(#wa${world})"/>
 <circle cx="300" cy="26" r="26" fill="${th.sunGlow}" opacity=".8"/><circle cx="300" cy="26" r="9" fill="${th.sunDisc}"/>
 <path d="M0 72 Q60 46 130 64 T260 56 T360 62 V112 H0Z" fill="${th.hills}"/>
-${tr}${lamp}
+${tr}${lamp}${extra}
 <rect y="84" width="360" height="28" fill="${th.grass[0]}"/><rect y="94" width="360" height="8" fill="${th.grass[1]}"/>${hedge}
 <path d="M150 112 C150 96 110 92 116 80 C122 68 210 70 204 56 C198 44 160 46 166 30" fill="none" stroke="#2E3136" stroke-width="13" stroke-linecap="round"/>
 <circle cx="166" cy="30" r="4.5" fill="#0B0C0D" stroke="#A9B0B7" stroke-width="1.5"/>
@@ -42,16 +49,15 @@ export function mapScreen(app: App): HTMLElement {
     const unlocked = !soon && app.worldUnlocked(w);
     const levels = levelsOfWorld(w);
     const done = levels.filter((l) => app.record(l.id)?.completed).length;
-    let worldStars = 0;
-    for (const l of levels) {
-      const r = app.record(l.id);
-      if (r) worldStars += r.stars.filter(Boolean).length;
-    }
+    const worldStars = app.worldStars(w);
     const right = soon
       ? h('div.lock-chip', t('map.soon'))
       : unlocked
-        ? h('div.stars-chip', [svg(icons.star(16)), `${worldStars}/${LEVELS_PER_WORLD * 3}`])
-        : h('div.lock-chip', [svg(icons.lock(14)), t(UNLOCK_BY_COMPLETION.includes(w) ? 'map.lockedOr' : 'map.locked', { n: WORLD_UNLOCK[w] })]);
+        ? h('div.stars-chip', [svg(icons.star(16)), `${worldStars}/${levels.length * 3}`])
+        : h('div.lock-chip.two-line', [
+            svg(icons.lock(14)),
+            h('span', [h('b', t('map.locked', { n: WORLD_UNLOCK[w] })), UNLOCK_BY_COMPLETION.includes(w) ? h('small', t('map.lockedOr')) : null]),
+          ]);
     const card = h(
       `button.world-card${unlocked ? '' : '.locked'}`,
       {

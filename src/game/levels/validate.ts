@@ -111,7 +111,7 @@ export function validateLevel(raw: unknown): ValidationResult {
   if (cps.length > 4) errors.push('en fazla 4 kontrol noktası');
 
   const stars = L.stars ?? [];
-  if (stars.length !== 3) errors.push('3 yıldız olmalı');
+  // Yoldaki yıldızlar artık kullanılmıyor (yıldızlar süreye göre); varsa yine de erişilebilir olmalı
   const near = { dist: 0, halfWidth: 0, cx: 0, cy: 0, line: track.main };
   stars.forEach((s, i) => {
     if (!isNum(s.x) || !isNum(s.y)) {
