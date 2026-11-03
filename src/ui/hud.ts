@@ -23,7 +23,6 @@ export class Hud {
   private lastTimer = '';
   private toastTimer = 0;
   private assistTimer = 0;
-  private assistShown = false;
   private starTotal = 3;
 
   constructor(private app: App) {
@@ -33,7 +32,7 @@ export class Hud {
     this.label = h('div.level-chip', '');
     this.ghost = h('div.ghost-chip', '');
     this.toastEl = h('div.hud-toast.glass', '');
-    this.assistTip = h('div.assist-tip', [svg(icons.assist(14)), h('span', t('hud.assistTip'))]);
+    this.assistTip = h('div.assist-tip', [svg(icons.lifebuoy(18)), h('span', t('hud.assistTip'))]);
     this.hint = h('div.hint.glass', [svg(icons.rope()), h('span', t('hud.hint.ropes'))]);
     this.tiltCard = h('div.tilt-card.glass', [svg(icons.phone()), h('div', [h('b', t('hud.hint.tilt')), h('span', t('hud.hint.tiltSub'))])]);
     this.sideBtn = h('button.side-btn.glass', { onclick: () => this.swapSide() }, [svg(icons.swap()), h('span.txt', '')]);
@@ -81,17 +80,14 @@ export class Hud {
     this.toastEl.classList.remove('show');
     clearTimeout(this.assistTimer);
     this.assistTip.classList.remove('show');
-    this.assistShown = false;
   }
 
   /** Oyuncu bu etapta çok düştüyse (yardım modu kapalıyken) yardım modunu öner */
   suggestAssist(): void {
-    // Etap başına bir kez gösterilir, 5 sn sonra yavaşça kaybolur
-    if (this.assistShown) return;
-    this.assistShown = true;
+    // 10 sn görünür, sonra yavaşça kaybolur
     this.assistTip.classList.add('show');
     clearTimeout(this.assistTimer);
-    this.assistTimer = window.setTimeout(() => this.assistTip.classList.remove('show'), 5000);
+    this.assistTimer = window.setTimeout(() => this.assistTip.classList.remove('show'), 10000);
   }
 
   /** Kontrol türü oyun sırasında değişince göstergeleri yeniler */

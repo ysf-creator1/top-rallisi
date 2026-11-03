@@ -390,8 +390,9 @@ export class App {
           const fromCp = !!this.session && this.session.sim.lastCheckpoint >= 0;
           if (cause === 'edge') this.hud.flash(t(fromCp ? 'hud.fell' : 'hud.fellStart'), 'warn');
           else this.hud.flash(`${t(`hud.cause.${cause}`)} ${t(fromCp ? 'hud.from.cp' : 'hud.from.start')}`, 'warn');
-          // 5'ten fazla düşen ve yardım modu kapalı olan oyuncuya yardım modunu öner
-          if (this.session && !this.session.opts.assist && this.session.sim.falls > ASSIST_TIP_FALLS) this.hud.suggestAssist();
+          // Yardım modu kapalıyken her 5 düşüşte (5, 10, 15…) yardım modunu öner
+          const falls = this.session?.sim.falls ?? 0;
+          if (this.session && !this.session.opts.assist && falls > 0 && falls % ASSIST_TIP_FALLS === 0) this.hud.suggestAssist();
         },
         onFinish: (r) => this.finishLevel(level, r),
       },

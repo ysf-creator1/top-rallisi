@@ -49,6 +49,9 @@ export const icons = {
   plus: () => line('<path d="M12 6v12M6 12h12"/>'),
   close: () => line('<path d="M7 7l10 10M17 7L7 17"/>'),
   share: () => line('<path d="M12 15V4M8 7.5L12 3.5l4 4"/><path d="M6 11v8.5h12V11"/>'),
+  /** Can simidi: yardım ipucu için renkli ikon */
+  lifebuoy: (size = 18) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.3" fill="none" stroke="#FFFFFF" stroke-width="5"/><circle cx="12" cy="12" r="7.3" fill="none" stroke="#E5534B" stroke-width="5" stroke-dasharray="5.73 5.73" stroke-dashoffset="2.87"/><circle cx="12" cy="12" r="9.8" fill="none" stroke="#B83A33" stroke-width="1"/><circle cx="12" cy="12" r="4.8" fill="none" stroke="#B83A33" stroke-width="1"/></svg>`,
   assist: (size = 12) => line('<path d="M12 3.5l7 3v5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9v-5z"/>', size),
   arrowLeft: (size = 14) => line('<path d="M19 12H5M10 7l-5 5 5 5"/>', size),
   arrowRight: (size = 14) => line('<path d="M5 12h14M14 7l5 5-5 5"/>', size),
