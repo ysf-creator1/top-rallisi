@@ -22,6 +22,8 @@ export class Hud {
   private windEls: HTMLElement[] = [];
   private lastTimer = '';
   private toastTimer = 0;
+  private assistTimer = 0;
+  private assistShown = false;
   private starTotal = 3;
 
   constructor(private app: App) {
@@ -40,8 +42,7 @@ export class Hud {
     this.el = h('div.hud.hidden', [
       this.windLayer,
       h('div.hud-top', [pause, this.timer, this.stars]),
-      h('div.hud-label', [this.label, this.ghost]),
-      this.assistTip,
+      h('div.hud-label', [this.label, this.ghost, this.assistTip]),
       this.toastEl,
       this.hint,
       this.tiltCard,
@@ -78,12 +79,19 @@ export class Hud {
       return el;
     });
     this.toastEl.classList.remove('show');
+    clearTimeout(this.assistTimer);
     this.assistTip.classList.remove('show');
+    this.assistShown = false;
   }
 
   /** Oyuncu bu etapta çok düştüyse (yardım modu kapalıyken) yardım modunu öner */
   suggestAssist(): void {
+    // Etap başına bir kez gösterilir, 5 sn sonra yavaşça kaybolur
+    if (this.assistShown) return;
+    this.assistShown = true;
     this.assistTip.classList.add('show');
+    clearTimeout(this.assistTimer);
+    this.assistTimer = window.setTimeout(() => this.assistTip.classList.remove('show'), 5000);
   }
 
   /** Kontrol türü oyun sırasında değişince göstergeleri yeniler */
