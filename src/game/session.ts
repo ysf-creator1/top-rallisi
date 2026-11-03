@@ -48,6 +48,8 @@ export interface SessionCallbacks {
 
 /** Kamera turunun iniş süresi; toplam tur = INTRO_HOLD + INTRO_PAN */
 const INTRO_PAN = 1.6;
+/** Yeniden doğunca eğimin tamamen devreye girme süresi (sn) */
+const TILT_EASE_SEC = 0.8;
 const INTRO_HOLD = 0.6;
 
 export class GameSession {
@@ -73,6 +75,10 @@ export class GameSession {
   private calibSum = 0;
   private calibN = 0;
   tiltOffset: number;
+  /** Süzülmüş sensör açısı (tek tük ani okumaları yumuşatır) */
+  private tiltFilt: number | null = null;
+  /** 0→1: yeniden doğunca / kalibrasyondan sonra eğim yavaşça devreye girer */
+  private tiltEase = 1;
 
   constructor(
     readonly opts: SessionOptions,
@@ -161,12 +167,18 @@ export class GameSession {
       // Eğim: telefon sağa eğilince sağ uç alçalır
       let deg = 0;
       if (tiltAvailable()) {
-        const raw = readTiltDeg();
+        const raw0 = readTiltDeg();
+        // Hafif süzgeç (~60 ms): sensörün tek tük sıçramaları çubuğa yansımasın
+        this.tiltFilt = this.tiltFilt === null ? raw0 : this.tiltFilt + (raw0 - this.tiltFilt) * (1 - Math.exp(-dt / 0.06));
+        const raw = this.tiltFilt;
         if (this.calibrating > 0) {
           this.calibrating -= dt;
           this.calibSum += raw;
           this.calibN++;
-          if (this.calibrating <= 0) this.tiltOffset = this.calibSum / Math.max(1, this.calibN);
+          if (this.calibrating <= 0) {
+            this.tiltOffset = this.calibSum / Math.max(1, this.calibN);
+            this.tiltEase = 0;
+          }
           return;
         }
         deg = raw - this.tiltOffset;
@@ -180,7 +192,10 @@ export class GameSession {
       if (kb.tilt === 0) this.kbTilt *= Math.exp(-dt * 3);
       this.kbTilt = Math.max(-physics.maxTiltDeg, Math.min(physics.maxTiltDeg, this.kbTilt));
       const mult = 0.6 + this.opts.tiltSensitivity * 1.2;
-      const tiltDeg = -(deg * mult + this.kbTilt);
+      // Yeniden doğunca çubuk telefonun o anki eğimine sıçramasın: ~0,8 sn'de yumuşakça gelsin
+      this.tiltEase = Math.min(1, this.tiltEase + dt / TILT_EASE_SEC);
+      const ease = this.tiltEase * this.tiltEase * (3 - 2 * this.tiltEase);
+      const tiltDeg = -(deg * mult * ease + this.kbTilt);
       const pull = this.opts.ropeSide === 'left' ? pxL : pxR;
       const lift = pull * k + kb.lift * kbRate;
       sim.setTiltLift((tiltDeg * Math.PI) / 180, lift);
@@ -226,6 +241,7 @@ export class GameSession {
           break;
         case 'respawn':
           this.spawnAt = this.time;
+          this.tiltEase = 0;
           this.renderer.follow(this.sim.ballY, 0.3);
           this.cb.onRespawn?.();
           break;

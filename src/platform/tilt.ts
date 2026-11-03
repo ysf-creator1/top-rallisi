@@ -61,12 +61,30 @@ export function stopTilt(): void {
   listening = false;
 }
 
-/** Ekran yönüne göre düzeltilmiş sağ-sol eğim (derece). Sağa eğince artı. */
+/**
+ * Ekran yönüne göre düzeltilmiş sağ-sol eğim (derece). Sağa eğince artı.
+ * Doğrudan gamma kullanılmaz: telefon dik tutulunca (beta ~90°) gamma kararsızlaşır,
+ * bir anda ±90° sıçrayabilir. Bunun yerine telefona göre "yukarı" yönünden açı
+ * hesaplanır: düz tutunca gamma ile aynı, dik tutunca da kararlı.
+ */
 export function readTiltDeg(): number {
-  const angle = (screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0) as number;
-  if (angle === 90) return beta;
-  if (angle === -90 || angle === 270) return -beta;
-  return gamma;
+  return tiltFromAngles(beta, gamma, (screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0) as number);
+}
+
+/** beta, gamma (derece) ve ekran açısından sağ-sol eğim (derece) */
+export function tiltFromAngles(betaDeg: number, gammaDeg: number, screenAngle: number): number {
+  const b = (betaDeg * Math.PI) / 180;
+  const g = (gammaDeg * Math.PI) / 180;
+  // Yukarı yönün (yerçekiminin tersi) telefona göre bileşenleri
+  const ux = -Math.cos(b) * Math.sin(g);
+  const uy = Math.sin(b);
+  const uz = Math.cos(b) * Math.cos(g);
+  const asinDeg = (v: number) => (Math.asin(Math.max(-1, Math.min(1, v))) * 180) / Math.PI;
+  if (screenAngle === 90) return asinDeg(uy);
+  if (screenAngle === -90 || screenAngle === 270) return -asinDeg(uy);
+  // Düz tutuşta gamma'ya, dik tutuşta direksiyon gibi çevirme açısına eşit;
+  // aradaki açılarda da gerçek çevirme açısına çok yakın ve hiç sıçramaz.
+  return (Math.atan2(-ux, Math.max(Math.abs(uy), Math.abs(uz), 1e-6)) * 180) / Math.PI;
 }
 
 export function tiltAvailable(): boolean {
