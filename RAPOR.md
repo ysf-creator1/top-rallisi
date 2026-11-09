@@ -18,6 +18,10 @@ Açılınca **Google ile giriş yap**'a bas. Verileri sadece senin iki Google he
 
 ## Raporda neler var
 - Özet: oyuncu, oturum, toplam süre, ortalama oturum, etap denemesi, bitirme oranı
+- Geri dönüyorlar mı: ilk kez oynayanların kaçı ertesi gün ve 7 gün içinde yine oynadı (ilk güne göre liste)
+- Kontrol seçimi: ilk açılış kartında "Telefonu eğ" / "Çift halat" kaç kez seçildi; her modda bitirme oranı ve düşüş
+- Oyuncular nerede bırakıyor: her oyuncunun son oynadığı etap; 2 gündür gelmeyen oyuncu orada bırakmış sayılır
+- Günün etabı, gün serisi, haftalık görevler ve meydan okuma linklerinin kullanımı (2026-11-10'dan itibaren)
 - Günlük etkinlik grafiği (oyuncu / oturum / dakika)
 - Hangi gün ve saatte oynandığı (ısı haritası)
 - Şehir, bölge, ülke ve internet sağlayıcısı
@@ -43,7 +47,7 @@ Açılınca **Google ile giriş yap**'a bas. Verileri sadece senin iki Google he
 ## Koddaki yerleri (geliştirici için)
 - `src/platform/analytics.ts`: olayları toplar ve toplu halde Firestore'a yazar. İnternet yoksa kuyrukta bekletir.
 - `src/config/analytics.ts`: Firebase proje ayarı. Bu değerler gizli değildir.
-- `src/ui/app.ts`: olayların gönderildiği yerler (`ls` etap başı, `le` bitiş, `lq` bırakma, `screen`, `buy`, `qdown`).
+- `src/ui/app.ts`: olayların gönderildiği yerler (`ls` etap başı, `le` bitiş, `lq` bırakma, `screen`, `buy`, `qdown`, `ctrlPick` kontrol kartı, `streak` seri, `goal` görev, `chShare` / `chOpen` meydan okuma linki).
 - `public/rapor.html`: rapor sayfası. Tek dosyadır; analizin hepsini tarayıcıda yapar ve indirdiği kayıtları tarayıcıda saklar.
 - `tests/analytics.test.ts`: testler.
 - Yerelde (localhost) kayıt gönderilmez. Denemek için adrese `?log=1` ekle.

@@ -157,6 +157,16 @@ td .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-s
 td .pill.good { color: var(--good); }
 td .pill.bad { color: var(--bad); }
 .sub-cell { color: var(--muted); font-size: 12px; }
+.big2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.big2 .v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.big2 .l { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.big2 .f { font-size: 12px; color: var(--muted); }
+.stat-list { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+.stat-list .k { color: var(--ink-2); }
+.stat-list .v { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.stat-list .sep { grid-column: 1 / -1; border-top: 1px solid var(--grid); margin: 2px 0; }
+.split { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--surface-2); margin: 4px 0 12px; }
+.split i { display: block; height: 100%; }
 .pen { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 2px 4px; font-size: 12px; }
 .pen:hover { color: var(--ink); }
 .empty { padding: 30px 10px; text-align: center; color: var(--muted); font-size: 14px; }
@@ -564,7 +574,80 @@ function analyze(all) {
     }
   }
   const newPlayers = [...players.values()].filter((p) => p.first >= from).length;
-  return { sessions, sessionsAll, players: [...players.values()], levels: [...levels.values()], levelMeta, buys, qdowns, totalLevelSec, from, newPlayers };
+
+  // Moda göre deneme/bitirme, kontrol kartı seçimi, yeni özellikler, oyuncunun son etabı
+  const mode = () => ({ starts: 0, wins: 0, falls: [], times: [], players: new Set() });
+  const modes = { tilt: mode(), ropes: mode() };
+  const picks = { tilt: 0, ropes: 0 };
+  const feat = { dailyStarts: 0, dailyWins: 0, dailyPlayers: new Set(), chShare: 0, chShared: 0, chOpen: 0, chOpenBad: 0, chRaces: 0, chWins: 0, goals: 0, streakMax: 0, streakPlayers: new Set(), gifts: 0 };
+  let tiltDenied = 0;
+  const lastLevel = new Map();
+  for (const s of sessions) {
+    let cur = null;
+    for (const e of s.events) {
+      if (e.e === 'ls') {
+        const md = e.mode === 'ropes' ? 'ropes' : 'tilt';
+        cur = { lvl: e.lvl, mode: md };
+        modes[md].starts++; modes[md].players.add(s.pid);
+        lastLevel.set(s.pid, { lvl: e.lvl, done: false });
+        if (e.daily) { feat.dailyStarts++; feat.dailyPlayers.add(s.pid); }
+        if (e.chal) feat.chRaces++;
+      } else if (e.e === 'le') {
+        const md = cur && cur.lvl === e.lvl ? cur.mode : e.ctrl === 'ropes' ? 'ropes' : 'tilt';
+        modes[md].wins++;
+        if (typeof e.falls === 'number') modes[md].falls.push(e.falls);
+        if (typeof e.time === 'number') modes[md].times.push(e.time);
+        lastLevel.set(s.pid, { lvl: e.lvl, done: true });
+        if (e.daily) feat.dailyWins++;
+        if (typeof e.chal === 'number' && typeof e.time === 'number' && e.time < e.chal) feat.chWins++;
+        cur = null;
+      } else if (e.e === 'lq') {
+        lastLevel.set(s.pid, { lvl: e.lvl, done: false });
+        cur = null;
+      } else if (e.e === 'ctrlPick') { if (e.c in picks) picks[e.c]++; }
+      else if (e.e === 'tiltDenied') tiltDenied++;
+      else if (e.e === 'chShare') { feat.chShare++; if (e.res === 'shared' || e.res === 'copied') feat.chShared++; }
+      else if (e.e === 'chOpen') { if (e.ok) feat.chOpen++; else feat.chOpenBad++; }
+      else if (e.e === 'goal') feat.goals++;
+      else if (e.e === 'streak') { feat.streakMax = Math.max(feat.streakMax, e.n || 0); if ((e.n || 0) >= 2) feat.streakPlayers.add(s.pid); if ((e.n || 0) % 7 === 0) feat.gifts++; }
+    }
+  }
+
+  // Bırakılan etap: oyuncunun son oynadığı etap; 2 gündür gelmeyen oyuncu orada bırakmış sayılır
+  const goneBefore = Date.now() - 2 * 86400000;
+  const drop = new Map();
+  const dr = (id) => { let d = drop.get(id); if (!d) { d = { id, meta: levelMeta.get(id), reached: new Set(), finished: new Set(), gone: 0, goneUnfinished: 0, active: 0 }; drop.set(id, d); } return d; };
+  for (const l of levels.values()) { const d = dr(l.id); for (const p of l.players) d.reached.add(p); for (const p of l.winners) d.finished.add(p); }
+  for (const [pid, ll] of lastLevel) {
+    const d = dr(ll.lvl);
+    const p = players.get(pid);
+    if (p && p.last < goneBefore) { d.gone++; if (!ll.done) d.goneUnfinished++; } else d.active++;
+  }
+
+  // Geri dönüş: ilk günü aralıkta olan oyuncular ertesi gün / 7 gün içinde yine oynadı mı (bütün kayıtlardan)
+  const dayOf = (ms, k = 0) => dayKey(startOfDay(ms) + k * 86400000 + 12 * 3600000);
+  const daysBy = new Map();
+  for (const s of sessionsAll) { let set = daysBy.get(s.pid); if (!set) daysBy.set(s.pid, (set = new Set())); set.add(dayOf(s.start)); }
+  const today = dayOf(Date.now());
+  const ret = { d1n: 0, d1: 0, d7n: 0, d7: 0, cohorts: new Map() };
+  for (const [pid, first] of firstSeen) {
+    if (first < from) continue;
+    const f = dayOf(first);
+    if (f === today) continue;
+    const set = daysBy.get(pid) || new Set();
+    const back1 = set.has(dayOf(first, 1));
+    let c = ret.cohorts.get(f);
+    if (!c) ret.cohorts.set(f, (c = { day: f, ms: startOfDay(first), n: 0, back: 0, open: dayOf(first, 1) === today }));
+    c.n++; if (back1) c.back++;
+    // Ertesi gün bugünse henüz bitmedi: orana katılmaz
+    if (dayOf(first, 1) !== today) { ret.d1n++; if (back1) ret.d1++; }
+    if (startOfDay(first) <= startOfDay(Date.now()) - 7 * 86400000) {
+      ret.d7n++;
+      for (let k = 1; k <= 7; k++) if (set.has(dayOf(first, k))) { ret.d7++; break; }
+    }
+  }
+
+  return { sessions, sessionsAll, players: [...players.values()], levels: [...levels.values()], levelMeta, buys, qdowns, totalLevelSec, from, newPlayers, modes, picks, tiltDenied, feat, drop: [...drop.values()], ret };
 }
 
 // ---------------- Bileşenler ----------------
@@ -833,6 +916,63 @@ function render() {
     kpi('Bitirme oranı', starts ? fmtPct(wins / starts) : '–', 'bitirilen / başlanan'),
   ]));
 
+  // Geri dönüş ve kontrol modu
+  const r = m.ret;
+  const cohortRows = [...r.cohorts.values()].sort((a, b) => b.ms - a.ms);
+  const retBody = el('div', {}, [
+    el('div', { class: 'big2' }, [
+      el('div', {}, [el('div', { class: 'l', text: 'Ertesi gün dönen' }), el('div', { class: 'v', text: r.d1n ? fmtPct(r.d1 / r.d1n) : '–' }), el('div', { class: 'f', text: r.d1n ? `${fmtN(r.d1)} / ${fmtN(r.d1n)} yeni oyuncu` : 'Henüz ertesi günü geçmiş yeni oyuncu yok' })]),
+      el('div', {}, [el('div', { class: 'l', text: '7 gün içinde dönen' }), el('div', { class: 'v', text: r.d7n ? fmtPct(r.d7 / r.d7n) : '–' }), el('div', { class: 'f', text: r.d7n ? `${fmtN(r.d7)} / ${fmtN(r.d7n)} yeni oyuncu` : 'İlk günü en az 7 gün önce olan oyuncu yok' })]),
+    ]),
+    cohortRows.length ? table([
+      { key: 'ms', label: 'İlk gün', num: true, render: (x) => dfLong.format(new Date(x.ms)) },
+      { key: 'n', label: 'Yeni oyuncu', num: true, render: (x) => fmtN(x.n) },
+      { key: 'back', label: 'Ertesi gün dönen', num: true, render: (x) => (x.open ? 'yarın belli olur' : `${fmtN(x.back)} (${fmtPct(x.back / x.n)})`) },
+    ], cohortRows, { sortKey: 'ms', id: 'cohorts', limit: 7 }) : null,
+  ]);
+  const md = m.modes;
+  const totalPick = m.picks.tilt + m.picks.ropes;
+  const avg = (a) => (a.length ? a.reduce((n, x) => n + x, 0) / a.length : null);
+  const modeRow = (k, label) => {
+    const x = md[k];
+    return { k, label, starts: x.starts, wins: x.wins, rate: x.starts ? x.wins / x.starts : null, players: x.players.size, falls: avg(x.falls), time: avg(x.times) };
+  };
+  const ctrlBody = el('div', {}, [
+    el('div', { class: 'big2' }, [
+      el('div', {}, [el('div', { class: 'l', text: 'Telefonu eğ' }), el('div', { class: 'v', text: fmtN(m.picks.tilt) }), el('div', { class: 'f', text: totalPick ? `oran: ${fmtPct(m.picks.tilt / totalPick)}` : 'seçim yok' })]),
+      el('div', {}, [el('div', { class: 'l', text: 'Çift halat' }), el('div', { class: 'v', text: fmtN(m.picks.ropes) }), el('div', { class: 'f', text: totalPick ? `oran: ${fmtPct(m.picks.ropes / totalPick)}` : 'seçim yok' })]),
+    ]),
+    totalPick ? el('div', { class: 'split', role: 'img', 'aria-label': 'Kontrol seçimi oranı' }, [el('i', { style: `width:${(m.picks.tilt / totalPick) * 100}%;background:var(--series-1)` }), el('i', { style: `width:${(m.picks.ropes / totalPick) * 100}%;background:var(--seq-2)` })]) : null,
+    table([
+      { key: 'label', label: 'Mod', render: (x) => x.label },
+      { key: 'starts', label: 'Deneme', num: true, render: (x) => fmtN(x.starts) },
+      { key: 'wins', label: 'Bitirme', num: true, render: (x) => fmtN(x.wins) },
+      { key: 'rate', label: 'Oran', num: true, render: (x) => (x.rate == null ? '–' : el('span', { class: `pill ${x.rate >= 0.6 ? 'good' : x.rate < 0.3 ? 'bad' : ''}`, text: fmtPct(x.rate) })) },
+      { key: 'players', label: 'Oyuncu', num: true, render: (x) => fmtN(x.players) },
+      { key: 'falls', label: 'Ort. düşüş', num: true, render: (x) => (x.falls == null ? '–' : nf1.format(x.falls)) },
+    ], [modeRow('tilt', 'Telefonu eğ'), modeRow('ropes', 'Çift halat')], { sortKey: 'starts', id: 'modes' }),
+    m.tiltDenied ? el('p', { class: 'hint', style: 'margin:10px 0 0', text: `${fmtN(m.tiltDenied)} kez eğim sensörü çalışmadı ve oyun çift halata geçti.` }) : null,
+  ]);
+  kids.push(el('div', { class: 'grid two' }, [
+    card('Geri dönüyorlar mı?', 'İlk kez oynayanların kaçı ertesi gün yine oynadı. Seçili aralıkta ilk kez gelen oyunculara bakılır.', retBody),
+    card('Kontrol seçimi ve modlar', 'İlk açılıştaki kartta hangisi seçildi; her modda başlanan etapların kaçı bitirildi.', ctrlBody),
+  ]));
+
+  // Nerede bırakıyorlar?
+  const dropRows = m.drop.filter((d) => d.reached.size || d.gone || d.active).map((d) => ({ ...d, label: levelLabel(d.meta, d.id), order: levelOrder(d.meta), nReached: d.reached.size, nFinished: d.finished.size }));
+  const maxReach = Math.max(1, ...dropRows.map((d) => d.nReached));
+  const worst = dropRows.slice().sort((a, b) => b.gone - a.gone)[0];
+  const totalGone = dropRows.reduce((n, d) => n + d.gone, 0);
+  kids.push(el('div', { class: 'grid' }, [card('Oyuncular nerede bırakıyor?',
+    `Her oyuncunun son oynadığı etap. 2 gündür gelmeyen oyuncu orada bırakmış sayılır.${worst && worst.gone ? ` En çok bırakılan: ${worst.label} (${fmtN(worst.gone)} oyuncu, toplam ${fmtN(totalGone)}).` : ''}`,
+    table([
+      { key: 'order', label: 'Etap', render: (x) => [x.label, el('div', { class: 'sub-cell', text: x.id })] },
+      { key: 'nReached', label: 'Ulaşan', num: true, render: (x) => [el('span', { class: 'minibar', style: `width:${Math.max(2, (x.nReached / maxReach) * 60)}px` }), fmtN(x.nReached)] },
+      { key: 'nFinished', label: 'Bitiren', num: true, render: (x) => fmtN(x.nFinished) },
+      { key: 'gone', label: 'Burada bıraktı', num: true, render: (x) => (x.gone ? el('span', { class: `pill ${x.gone >= 2 ? 'bad' : ''}`, text: `${fmtN(x.gone)}${x.goneUnfinished ? ` (${fmtN(x.goneUnfinished)} bitirmeden)` : ''}` }) : '0') },
+      { key: 'active', label: 'Şu an burada', num: true, render: (x) => fmtN(x.active) },
+    ], dropRows, { sortKey: 'order', desc: false, id: 'drop', limit: 20 }))]));
+
   // Günlük etkinlik
   const from = state.range === 'all' ? startOfDay(Math.min(...sessions.map((s) => s.start), Date.now())) : m.from;
   const nDays = Math.max(1, Math.round((startOfDay(Date.now()) - startOfDay(from)) / 86400000) + 1);
@@ -903,6 +1043,23 @@ function render() {
     { key: 'dev', label: 'Cihaz', sort: (r) => deviceName(r.dev), render: (r) => [deviceName(r.dev), el('div', { class: 'sub-cell', text: `${osName(r.dev)} · ${r.dev?.browser || ''}` })] },
     { key: 'geo', label: 'Konum', sort: (r) => placeName(r.geo), render: (r) => placeName(r.geo) },
   ], players, { sortKey: 'last', id: 'players', limit: 25, onRow: (p) => openPlayer(p, m) }))]));
+
+  // Yeni özellikler
+  const f = m.feat;
+  const featList = el('div', { class: 'stat-list' }, [
+    el('span', { class: 'k', text: 'Günün etabını oynayan oyuncu' }), el('span', { class: 'v', text: fmtN(f.dailyPlayers.size) }),
+    el('span', { class: 'k', text: 'Günün etabı: başlanan / bitirilen' }), el('span', { class: 'v', text: `${fmtN(f.dailyStarts)} / ${fmtN(f.dailyWins)}` }),
+    el('span', { class: 'sep' }),
+    el('span', { class: 'k', text: 'En uzun gün serisi' }), el('span', { class: 'v', text: f.streakMax ? `${fmtN(f.streakMax)} gün` : '–' }),
+    el('span', { class: 'k', text: 'En az 2 gün üst üste oynayan' }), el('span', { class: 'v', text: fmtN(f.streakPlayers.size) }),
+    el('span', { class: 'k', text: '7. gün hediyesi alınan' }), el('span', { class: 'v', text: fmtN(f.gifts) }),
+    el('span', { class: 'k', text: 'Tamamlanan haftalık görev' }), el('span', { class: 'v', text: fmtN(f.goals) }),
+    el('span', { class: 'sep' }),
+    el('span', { class: 'k', text: 'Meydan okuma linki paylaşılan' }), el('span', { class: 'v', text: fmtN(f.chShared) }),
+    el('span', { class: 'k', text: 'Linkle açılan meydan okuma' }), el('span', { class: 'v', text: `${fmtN(f.chOpen)}${f.chOpenBad ? ` (+${fmtN(f.chOpenBad)} açılamadı)` : ''}` }),
+    el('span', { class: 'k', text: 'Arkadaş hayaletiyle yarış: başlanan / arkadaşını geçen' }), el('span', { class: 'v', text: `${fmtN(f.chRaces)} / ${fmtN(f.chWins)}` }),
+  ]);
+  kids.push(el('div', { class: 'grid' }, [card('Günün etabı, seri, görevler, meydan okuma', 'Bu özellikler 10 Kasım 2026\'da eklendi; öncesinde veri yok.', featList)]));
 
   // Etaplar
   const lvRows = m.levels.map((l) => {
