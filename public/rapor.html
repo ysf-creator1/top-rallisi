@@ -182,6 +182,40 @@ td .pill.bad { color: var(--bad); }
 .sess ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
 footer { margin-top: 26px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 footer button { font-size: 12px; padding: 5px 10px; }
+.print-only { display: none; }
+/* PDF (yazdırma): her zaman açık renk, butonlar gizli, renkler korunur */
+@page { size: A4; margin: 12mm; }
+@media print {
+  html:root:not(#_) {
+    color-scheme: light;
+    --page: #ffffff; --surface: #ffffff; --surface-2: #f3eee5; --ink: #1f2226; --ink-2: #55585c; --muted: #8a8780;
+    --grid: #e6e0d4; --axis: #c9c2b4; --border: rgba(31,34,38,0.14); --accent: #2a78d6; --series-1: #2a78d6;
+    --seq-0: #efeae1; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7; --seq-4: #256abf; --seq-5: #104281;
+    --good: #0a7a0a; --bad: #c23535; --warn-bg: #fff3d6; --shadow: none;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 12px; }
+  .wrap { max-width: none; padding: 0; }
+  .btn, .tabs, .seg, .check, .status, .pen, footer, .drawer, .drawer-bg, .tip, .notice { display: none !important; }
+  .print-only { display: block; font-size: 12px; color: var(--ink-2); margin: -10px 0 14px; }
+  header.top { margin-bottom: 10px; }
+  .filters { margin: 0; }
+  .card { box-shadow: none; padding: 12px 14px; border-radius: 10px; }
+  .kpi, .grid.two > .card, .grid.three > .card, .chart, .heat { break-inside: avoid; }
+  .grid { gap: 10px; margin-bottom: 10px; }
+  .kpis { grid-template-columns: repeat(3, 1fr); }
+  .two { grid-template-columns: 1fr 1fr; }
+  .tablewrap { overflow: visible; margin: 0; padding: 0; }
+  table { font-size: 10.5px; }
+  th, td { padding: 5px 6px; }
+  th { position: static; }
+  tr { break-inside: avoid; }
+  .card h2, .card .hint, .card .tabs { break-after: avoid; page-break-after: avoid; }
+  .card:has(table) { break-before: auto; }
+  .card:has(table) > .hint { margin-bottom: 8px; }
+  thead { display: table-header-group; }
+  .loading .stale { opacity: 1; }
+}
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head>
@@ -199,7 +233,12 @@ footer button { font-size: 12px; padding: 5px 10px; }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
       Yenile
     </button>
+    <button class="btn" id="pdf" hidden title="Raporu PDF olarak kaydet (yazdırma penceresinde 'PDF olarak kaydet'i seç)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      PDF
+    </button>
   </header>
+  <div class="print-only" id="printInfo"></div>
   <div id="main"></div>
 </div>
 <div class="tip" id="tip" role="tooltip"></div>
@@ -670,7 +709,9 @@ function table(cols, rows, { sortKey, desc = true, onRow, limit, id } = {}) {
       const c = typeof x === 'string' || typeof y === 'string' ? String(x ?? '').localeCompare(String(y ?? ''), 'tr') : (x ?? -Infinity) - (y ?? -Infinity);
       return dsc ? -c : c;
     });
-    const shown = limit && !showAll ? sorted.slice(0, limit) : sorted;
+    // PDF'te tablolar kısaltılmaz
+    const lim = printing ? 0 : limit;
+    const shown = lim && !showAll ? sorted.slice(0, lim) : sorted;
     const thead = el('thead', {}, el('tr', {}, cols.map((c) => {
       const th = el('th', { class: c.num ? 'num' : '', scope: 'col', 'aria-sort': c.key === key ? (dsc ? 'descending' : 'ascending') : 'none' }, [c.label, c.key === key ? el('span', { class: 'arr', text: dsc ? '▼' : '▲' }) : null]);
       th.addEventListener('click', () => {
@@ -693,7 +734,7 @@ function table(cols, rows, { sortKey, desc = true, onRow, limit, id } = {}) {
     }
     const tbl = el('table', {}, [thead, tbody]);
     const kids = [tbl];
-    if (limit && sorted.length > limit) kids.push(el('div', { style: 'padding-top:10px' }, el('button', { class: 'btn', text: showAll ? 'Daha az göster' : `Tümünü göster (${sorted.length})`, onclick: () => { showAll = !showAll; draw(); } })));
+    if (lim && sorted.length > lim) kids.push(el('div', { style: 'padding-top:10px' }, el('button', { class: 'btn', text: showAll ? 'Daha az göster' : `Tümünü göster (${sorted.length})`, onclick: () => { showAll = !showAll; draw(); } })));
     wrap.replaceChildren(...kids);
   };
   draw();
@@ -914,8 +955,39 @@ function render() {
   main.replaceChildren(...kids);
 }
 
+// ---------------- PDF ----------------
+// Tarayıcının yazdırma penceresi açılır; hedef olarak "PDF olarak kaydet" seçilir.
+let printing = false;
+const RANGE_LABEL = { today: 'Bugün', '7': 'Son 7 gün', '30': 'Son 30 gün', '90': 'Son 90 gün', all: 'Tüm zamanlar' };
+function exportPdf() {
+  if (!user || !model) return;
+  hideTip();
+  printing = true;
+  render();
+  const oldTitle = document.title;
+  $('#printInfo').textContent = `Aralık: ${RANGE_LABEL[state.range] || state.range} · ${fmtN(model.players.length)} oyuncu, ${fmtN(model.sessions.length)} oturum · Oluşturulma: ${dtfY.format(new Date())}`;
+  // PDF dosya adı sayfa başlığından gelir
+  document.title = `Top Rallisi Raporu ${dayKey(Date.now())} (${RANGE_LABEL[state.range] || state.range})`;
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    printing = false;
+    document.title = oldTitle;
+    window.removeEventListener('afterprint', finish);
+    render();
+  };
+  window.addEventListener('afterprint', finish);
+  setTimeout(() => {
+    window.print();
+    // Masaüstü tarayıcılarda print() pencere kapanınca döner; afterprint gelmezse 1 sn sonra toparla
+    setTimeout(finish, 1000);
+  }, 60);
+}
+
 // ---------------- Akış ----------------
 const refreshBtn = $('#refresh');
+$('#pdf').addEventListener('click', exportPdf);
 function setStatus(t) { const s = $('#status'); if (s) s.textContent = t; }
 function setUpdated() {
   const n = docs.length;
@@ -1003,6 +1075,7 @@ async function boot() {
     $('#who').textContent = u ? u.email : '';
     $('#signout').hidden = !u;
     refreshBtn.hidden = !u;
+    $('#pdf').hidden = !u;
     if (!u) { gate('Oyun verilerini görmek için Google hesabınla giriş yap.'); return; }
     render();
     if (docs.length) setStatus(`Önceden indirilen ${fmtN(docs.length)} kayıt gösteriliyor, yenileniyor…`);
