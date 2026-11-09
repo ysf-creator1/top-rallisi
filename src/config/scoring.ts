@@ -38,6 +38,19 @@ export function timeTargetsFromBot(bot: number): TimeTargets {
   return { gold, silver, bronze };
 }
 
+/**
+ * Çift halat, telefonu eğmekten zor: bu modda yıldız süreleri %25 daha uzun.
+ * Etap dosyalarındaki süreler eğim modu içindir.
+ */
+export const ROPES_TIME_FACTOR = 1.25;
+
+/** Oynanan moda göre yıldız süreleri (çift halatta tam saniyeye yukarı yuvarlanır) */
+export function targetsFor(targets: TimeTargets, control: 'ropes' | 'tilt'): TimeTargets {
+  if (control !== 'ropes') return targets;
+  const f = (x: number) => Math.ceil(x * ROPES_TIME_FACTOR - 1e-9);
+  return { gold: f(targets.gold), silver: f(targets.silver), bronze: f(targets.bronze) };
+}
+
 /** Yıldız: bitirmek 1, "silver" süresi 2, "gold" süresi 3 (yardım modunda en fazla 2). */
 export function timeStars(time: number, targets: TimeTargets, assist: boolean): number {
   let s = 1;

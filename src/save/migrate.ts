@@ -6,6 +6,8 @@ import { CURRENT_VERSION, DEFAULT_COSTUME, DEFAULT_SETTINGS, defaultSave, type S
 
 function fromV1(v1: SaveV1): SaveData {
   const s = defaultSave();
+  // Sürüm 1'de sadece çift halat vardı: eski oyuncu alıştığı modla devam eder
+  s.settings.control = 'ropes';
   if (v1.settings) {
     if (typeof v1.settings.sensitivity === 'number') s.settings.sensitivity = v1.settings.sensitivity;
     if (v1.settings.trackColor) s.settings.trackColor = v1.settings.trackColor;

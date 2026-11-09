@@ -115,8 +115,25 @@ export function settingsScreen(app: App, onBack: () => void): { el: HTMLElement;
   const tiltRows = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } });
   const renderTiltRows = () => {
     tiltRows.innerHTML = '';
-    if (s().control !== 'tilt') return;
+    if (s().control !== 'tilt') {
+      // Çift halatta sağ/sol seçimi yok; sadece süreler hakkında kısa bilgi
+      tiltRows.append(h('p.ctrl-note', t('settings.ropesNote')));
+      return;
+    }
     tiltRows.append(
+      // Halat tarafı sadece eğim modunda anlamlı (tek halat)
+      h('div.row', [
+        h('span.label', [t('settings.ropeSide'), h('small', t('settings.ropeSideSub'))]),
+        segmented(
+          [
+            { label: t('settings.left'), value: 'left' },
+            { label: t('settings.right'), value: 'right' },
+          ],
+          s().ropeSide,
+          (v) => save.update((d) => (d.settings.ropeSide = v as 'left' | 'right')),
+          true,
+        ),
+      ]),
       slider(s().tiltSensitivity, (v) => save.update((d) => (d.settings.tiltSensitivity = v)), t('settings.tiltSensitivity')),
     );
   };
@@ -155,20 +172,8 @@ export function settingsScreen(app: App, onBack: () => void): { el: HTMLElement;
       h('div.card', [
         h('span.section-title', t('settings.controls')),
         control,
-        h('div.row', [
-          h('span.label', [t('settings.ropeSide'), h('small', t('settings.ropeSideSub'))]),
-          segmented(
-            [
-              { label: t('settings.left'), value: 'left' },
-              { label: t('settings.right'), value: 'right' },
-            ],
-            s().ropeSide,
-            (v) => save.update((d) => (d.settings.ropeSide = v as 'left' | 'right')),
-            true,
-          ),
-        ]),
-        slider(s().sensitivity, (v) => save.update((d) => (d.settings.sensitivity = v)), t('settings.sensitivity')),
         tiltRows,
+        slider(s().sensitivity, (v) => save.update((d) => (d.settings.sensitivity = v)), t('settings.sensitivity')),
       ]),
       h('div.card', { style: { padding: '6px 16px', gap: '0' } }, [
         h('div.row.list-row', [

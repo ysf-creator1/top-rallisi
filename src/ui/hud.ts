@@ -1,6 +1,6 @@
 // Oyun üstü göstergeler: süre, yıldızlar, etap etiketi, hayalet farkı, ipuçları.
 
-import { timeStars } from '../config/scoring';
+import { targetsFor, timeStars } from '../config/scoring';
 import { LEVELS } from '../game/levels';
 import type { LevelData } from '../game/levels/types';
 import { formatDelta, formatTime, t } from '../i18n';
@@ -162,7 +162,7 @@ export class Hud {
     if (txt !== this.lastTimer) {
       this.timer.textContent = txt;
       this.lastTimer = txt;
-      if (this.level) this.setLiveStars(timeStars(s.raceTime, this.level.timeTargets, s.opts.assist));
+      if (this.level) this.setLiveStars(timeStars(s.raceTime, targetsFor(this.level.timeTargets, s.timeControl), s.opts.assist));
     }
     if (this.ghost.dataset.on) {
       const d = s.ghostDelta;

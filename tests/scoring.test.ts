@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { nextTimeStarGap, pointsEarned, scoreValue, timeBonus, timeStars, timeTargetsFromBot } from '../src/config/scoring';
+import { ROPES_TIME_FACTOR, nextTimeStarGap, pointsEarned, scoreValue, targetsFor, timeBonus, timeStars, timeTargetsFromBot } from '../src/config/scoring';
 
 const tt = { bronze: 60, silver: 40, gold: 28 };
 
@@ -53,5 +53,17 @@ describe('puan', () => {
     const prev = { timeStars: 2, stars: [true, false, false], bonus: 20 };
     // Altın + yeni bir yıldız + 10 puanlık daha iyi bonus
     expect(pointsEarned(prev, 3, [false, true, false], 30)).toBe(180 - 120 + 20 + 10);
+  });
+});
+
+describe('moda göre yıldız süreleri', () => {
+  test('çift halatta süreler %25 uzun, eğimde aynı', () => {
+    const tt = { gold: 20, silver: 28, bronze: 40 };
+    expect(ROPES_TIME_FACTOR).toBe(1.25);
+    expect(targetsFor(tt, 'tilt')).toEqual(tt);
+    expect(targetsFor(tt, 'ropes')).toEqual({ gold: 25, silver: 35, bronze: 50 });
+    // 24 sn: eğimde 2 yıldız, çift halatta 3 yıldız
+    expect(timeStars(24, targetsFor(tt, 'tilt'), false)).toBe(2);
+    expect(timeStars(24, targetsFor(tt, 'ropes'), false)).toBe(3);
   });
 });

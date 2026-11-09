@@ -72,6 +72,11 @@ export class GameSession {
   private kbTilt = 0;
   ghostDelta: number | null = null;
   /**
+   * Yıldız süreleri hangi moda göre: deneme boyunca hep çift halatla oynandıysa 'ropes',
+   * araya eğim modu girdiyse 'tilt' (daha uzun halat süreleri istismar edilmesin).
+   */
+  timeControl: ControlMode;
+  /**
    * Halat koçunun gösterisi (ilk etaplar): halat düğümlerinin kayması (px),
    * uçların hayalet yükselişi ve hayalet topun kayması (birim). Fiziği etkilemez.
    */
@@ -95,6 +100,7 @@ export class GameSession {
   ) {
     this.sim = new Simulation(opts.level, { ball: opts.ball, assist: opts.assist });
     this.tiltOffset = opts.tiltOffset;
+    this.timeControl = opts.control;
     if (opts.ghost) {
       this.ghostPlayer = new GhostPlayer(opts.ghost, opts.level.boardWidth, this.sim.depth, physics.ballRadius);
     }
@@ -333,6 +339,7 @@ export class GameSession {
     this.finished = false;
     this.acc = 0;
     this.ghostDelta = null;
+    this.timeControl = this.opts.control;
     this.paused = false;
     this.ropes.releaseAll();
     this.renderer.levelProps?.resetStars(this.sim.starsCollected);
@@ -348,6 +355,7 @@ export class GameSession {
   applySettings(s: { control: ControlMode; ropeSide: 'left' | 'right'; sensitivity: number; tiltSensitivity: number }): void {
     const switchedToTilt = s.control === 'tilt' && this.opts.control !== 'tilt';
     this.opts.control = s.control;
+    if (s.control === 'tilt') this.timeControl = 'tilt';
     this.opts.ropeSide = s.ropeSide;
     this.opts.sensitivity = s.sensitivity;
     this.opts.tiltSensitivity = s.tiltSensitivity;

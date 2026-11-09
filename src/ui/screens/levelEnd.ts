@@ -1,6 +1,7 @@
 // Etap sonu (tarif 6.3, hedef: docs/tasarim/02-gunduz-etap-sonu.png)
 
 import type { BallType } from '../../config/physics';
+import type { TimeTargets } from '../../config/scoring';
 import type { LevelData } from '../../game/levels/types';
 import { formatDelta, formatTime, t } from '../../i18n';
 import type { RunRecord } from '../../save/schema';
@@ -19,6 +20,9 @@ export interface EndInfo {
   assist: boolean;
   ball: BallType;
   maxTimeStars: number;
+  /** Bu denemenin yıldız süreleri (moda göre) */
+  targets: TimeTargets;
+  control: 'ropes' | 'tilt';
 }
 
 const HOLE_SVG = `<svg width="140" height="104" viewBox="0 0 140 104" aria-hidden="true">
@@ -55,9 +59,10 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
   // Standart top dışındaki toplarda hangi topla oynandığı yazılır
   if (info.ball !== 'standard') recordRow.append(h('span.pill.info', t('end.ballUsed', { ball: t(`ball.${info.ball}`) })));
   if (info.assist) recordRow.append(h('span.pill.info', [svg(icons.assist(12)), t('levels.assisted')]));
+  if (info.control === 'ropes') recordRow.append(h('span.pill.info', t('end.ropesTimes')));
 
   // 2 ve 3 yıldız için gereken süreler (kazanılanlar yeşil)
-  const tt = L.timeTargets;
+  const tt = info.targets;
   const goal = (n: number, limit: number) =>
     h(`div.star-goal${info.timeStars >= n ? '.got' : ''}${info.assist && n === 3 ? '.capped' : ''}`, [
       h('span.sg-stars', { html: icons.star(15).repeat(n) }),

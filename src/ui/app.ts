@@ -1,7 +1,7 @@
 // Uygulama: ekranlar, oyun akışı, kayıt ve ödüller.
 
 import { ASSIST, physics, type BallType } from '../config/physics';
-import { PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
+import { PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, targetsFor, timeBonus, timeStars } from '../config/scoring';
 import { THEMES, themeForWorld, trackHex, type ThemeId } from '../config/theme';
 import { parseGhost, type GhostData } from '../game/ghost';
 import { KeyboardInput } from '../game/input/keyboard';
@@ -26,6 +26,7 @@ import { h } from './dom';
 import { RopeCoach } from './coach';
 import { Hud } from './hud';
 import { showA2hs, showConfirm, showTiltPermission, showWorldUnlocked } from './screens/dialogs';
+import { controlPickOverlay } from './screens/controlPick';
 import { DevPanel } from './screens/dev';
 import { levelEndScreen, type EndInfo } from './screens/levelEnd';
 import { levelsScreen } from './screens/levels';
@@ -141,6 +142,7 @@ export class App {
     );
     this.onResize();
     this.showTitle();
+    this.maybePickControl();
     initBackButton(() => this.handleBack());
     requestAnimationFrame(this.loop);
   }
@@ -554,8 +556,11 @@ export class App {
     const ball: BallType = this.save.data.ball;
     const prev = this.save.data.levels[level.id];
     const prevBest = assist ? prev?.bestAssist : prev?.best;
-    const tStars = timeStars(r.time, level.timeTargets, assist);
-    const bonus = timeBonus(r.time, level.timeTargets);
+    // Yıldız süreleri moda göre: çift halatta daha uzun
+    const control = this.session?.timeControl ?? this.save.data.settings.control;
+    const targets = targetsFor(level.timeTargets, control);
+    const tStars = timeStars(r.time, targets, assist);
+    const bonus = timeBonus(r.time, targets);
     const earned = this.previewMode ? 0 : pointsEarned(prev, tStars, r.stars, bonus);
     const isRecord = !prevBest || r.time < prevBest.time - 1e-6;
     const unlockedBefore = PLAYABLE_WORLDS.filter((w) => this.worldUnlocked(w));
@@ -587,6 +592,8 @@ export class App {
       assist,
       ball,
       maxTimeStars: assist ? ASSIST.maxTimeStars : 3,
+      targets,
+      control,
     };
     track('le', {
       lvl: level.id,
@@ -597,6 +604,7 @@ export class App {
       rec: isRecord,
       first: !prev?.completed,
       pts: earned,
+      ctrl: control,
       assist,
       dur: this.runSeconds(),
       fps: Math.round(this.fps),
@@ -664,6 +672,33 @@ export class App {
 
   confirm(text: string, yes: string, onYes: () => void): void {
     showConfirm(this, text, yes, onYes);
+  }
+
+  /**
+   * İlk açılışta "Telefonu eğ / Çift halat" seçimi (bir kez). Dokunmatik olmayan cihazda
+   * eğim olmadığı için sormadan çift halat seçilir (klavye her iki modda da çalışır).
+   */
+  private maybePickControl(): void {
+    if (this.save.data.flags.controlChosen) return;
+    if (!isTouchDevice()) {
+      this.save.update((d) => {
+        d.settings.control = 'ropes';
+        d.flags.controlChosen = true;
+      });
+      return;
+    }
+    this.openOverlay(
+      controlPickOverlay((c) => {
+        this.save.update((d) => {
+          d.settings.control = c;
+          d.flags.controlChosen = true;
+        });
+        track('ctrlPick', { c });
+        this.closeOverlay();
+        // Eğim izni (iPhone) etap başlarken istenir
+        this.applySettings();
+      }),
+    );
   }
 
   maybeShowA2hs(): void {

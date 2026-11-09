@@ -1912,3 +1912,136 @@ body[data-theme='aksam'] .shop-preview {
     rotate: 540deg;
   }
 }
+
+/* ---------- İlk açılış: kontrol seçimi ---------- */
+.cp .sheet {
+  gap: 14px;
+}
+.cp h2 {
+  margin: 2px 0 0;
+  text-align: center;
+}
+.cp-cards {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 8px;
+}
+.cp-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 10px 14px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 22px rgba(59, 63, 69, 0.1);
+  border: 2px solid transparent;
+  text-align: center;
+}
+.cp-card.rec {
+  border-color: var(--accent);
+}
+.cp-card b {
+  font-size: 16px;
+  font-weight: 800;
+}
+.cp-sub {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.cp-badge {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text, #24443a);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.cp-art {
+  width: 100%;
+  max-width: 132px;
+  aspect-ratio: 120 / 96;
+}
+.cp-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cp-note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.cp-phone {
+  transform-box: view-box;
+  transform-origin: 60px 50px;
+  animation: cp-phone 2.6s ease-in-out infinite;
+}
+.cp-tilt-ball {
+  animation: cp-tilt-ball 2.6s ease-in-out infinite;
+  animation-delay: 0.18s;
+}
+@keyframes cp-phone {
+  0%, 100% { transform: rotate(-13deg); }
+  50% { transform: rotate(13deg); }
+}
+@keyframes cp-tilt-ball {
+  0%, 100% { transform: translate(-13px, -1.2px); }
+  50% { transform: translate(13px, -1.2px); }
+}
+.cp-rope-l,
+.cp-rope-r {
+  animation: cp-rope 3s ease-in-out infinite;
+}
+.cp-bar {
+  animation: cp-bar 3s ease-in-out infinite;
+}
+.cp-touch {
+  animation: cp-touch 3s ease-in-out infinite;
+}
+@keyframes cp-rope {
+  0%, 15% { transform: translateY(0); }
+  45%, 60% { transform: translateY(10px); }
+  90%, 100% { transform: translateY(0); }
+}
+@keyframes cp-bar {
+  0%, 17% { transform: translateY(0); }
+  47%, 62% { transform: translateY(-16px); }
+  92%, 100% { transform: translateY(0); }
+}
+@keyframes cp-touch {
+  0%, 6% { opacity: 0; }
+  14%, 88% { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-phone,
+  .cp-tilt-ball,
+  .cp-rope-l,
+  .cp-rope-r,
+  .cp-bar,
+  .cp-touch {
+    animation: none;
+  }
+}
+
+/* Ayarlar: çift halat bilgisi */
+.ctrl-note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--muted);
+}

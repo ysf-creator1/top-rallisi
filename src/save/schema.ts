@@ -65,11 +65,12 @@ export interface SaveData {
   ball: BallType;
   ownedCostumes: string[];
   costume: Costume;
-  flags: { a2hsShown: boolean; hintRopes: boolean; hintTilt: boolean; /** Eğim duyarlılığı varsayılanı düşüğe çekildi */ tiltLow: boolean };
+  flags: { a2hsShown: boolean; hintRopes: boolean; hintTilt: boolean; /** Eğim duyarlılığı varsayılanı düşüğe çekildi */ tiltLow: boolean; /** İlk açılışta kontrol seçimi (eğim / çift halat) yapıldı */ controlChosen: boolean };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  control: 'ropes',
+  // Telefonu eğmek daha kolay: yeni oyuncular bununla başlar (ilk açılışta seçim kartı da çıkar)
+  control: 'tilt',
   ropeSide: 'right',
   sensitivity: 0.5,
   tiltSensitivity: 0.2,
@@ -101,7 +102,7 @@ export function defaultSave(): SaveData {
     ball: 'standard',
     ownedCostumes: [],
     costume: { ...DEFAULT_COSTUME },
-    flags: { a2hsShown: false, hintRopes: false, hintTilt: false, tiltLow: true },
+    flags: { a2hsShown: false, hintRopes: false, hintTilt: false, tiltLow: true, controlChosen: false },
   };
 }
 
