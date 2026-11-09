@@ -35,6 +35,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,webp,woff2,json,webmanifest}'],
+        // Rapor sayfası oyunun parçası değil: önbelleğe alınmaz, oyun sayfasına yönlendirilmez
+        globIgnores: ['**/rapor.html'],
+        navigateFallbackDenylist: [/rapor\.html/],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
     }),

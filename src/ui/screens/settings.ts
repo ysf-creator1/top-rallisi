@@ -2,6 +2,7 @@
 
 import { TRACK_COLORS, trackHex, trackPalette } from '../../config/theme';
 import { t } from '../../i18n';
+import { analyticsEnabled, setAnalyticsEnabled } from '../../platform/analytics';
 import { hapticsSupported } from '../../platform/haptics';
 import { isIOS } from '../../platform/device';
 import type { App } from '../app';
@@ -187,6 +188,10 @@ export function settingsScreen(app: App, onBack: () => void): { el: HTMLElement;
             save.update((d) => (d.settings.sound = v));
             app.applySettings();
           }, t('settings.sound')),
+        ]),
+        h('div.row.list-row', [
+          h('span.label', [t('settings.stats'), h('small', t('settings.statsSub'))]),
+          toggle(analyticsEnabled(), (v) => setAnalyticsEnabled(v), t('settings.stats')),
         ]),
       ]),
       h('p.note', t('settings.saveNote')),

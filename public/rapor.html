@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Top Rallisi Raporu</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f6f1e8;
+  --surface: #fffdf9;
+  --surface-2: #f3eee5;
+  --ink: #1f2226;
+  --ink-2: #55585c;
+  --muted: #8a8780;
+  --grid: #e6e0d4;
+  --axis: #c9c2b4;
+  --border: rgba(31, 34, 38, 0.10);
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --series-1: #2a78d6;
+  --seq-0: #efeae1;
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #5598e7;
+  --seq-4: #256abf;
+  --seq-5: #104281;
+  --good: #0a7a0a;
+  --bad: #c23535;
+  --warn-bg: #fff3d6;
+  --shadow: 0 1px 2px rgba(31,34,38,.05), 0 4px 18px rgba(31,34,38,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #121211;
+    --surface: #1b1b1a;
+    --surface-2: #242422;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #8f8d86;
+    --grid: #2c2c2a;
+    --axis: #3d3d3a;
+    --border: rgba(255,255,255,0.10);
+    --accent: #3987e5;
+    --series-1: #3987e5;
+    --seq-0: #232321;
+    --seq-1: #184f95;
+    --seq-2: #1c5cab;
+    --seq-3: #2a78d6;
+    --seq-4: #5598e7;
+    --seq-5: #9ec5f4;
+    --good: #2fbf2f;
+    --bad: #e66767;
+    --warn-bg: #3a3014;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #121211; --surface: #1b1b1a; --surface-2: #242422; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8f8d86;
+  --grid: #2c2c2a; --axis: #3d3d3a; --border: rgba(255,255,255,0.10); --accent: #3987e5; --series-1: #3987e5;
+  --seq-0: #232321; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+  --good: #2fbf2f; --bad: #e66767; --warn-bg: #3a3014; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; }
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 18px; }
+header.top h1 { font-size: 22px; line-height: 1.2; margin: 0; letter-spacing: -0.01em; }
+header.top .sub { color: var(--muted); font-size: 13px; }
+header.top .spacer { flex: 1; }
+.who { font-size: 13px; color: var(--ink-2); }
+button, select, input[type="text"] {
+  font: inherit; color: inherit;
+}
+.btn {
+  appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; box-shadow: var(--shadow);
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn svg { width: 16px; height: 16px; }
+.spin svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 0 0 18px; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; box-shadow: var(--shadow); flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--surface); }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.status { font-size: 13px; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+.card h2 { font-size: 15px; margin: 0 0 4px; }
+.card .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+@media (max-width: 420px) { .kpis { grid-template-columns: 1fr 1fr; } .kpi .value { font-size: 22px; } }
+.two { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.three { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+@media (max-width: 420px) { .two, .three { grid-template-columns: 1fr; } }
+.kpi .label { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.kpi .value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 4px; }
+.kpi .foot { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.loading .stale { opacity: .45; transition: opacity .2s; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .baseline { stroke: var(--axis); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .bar { fill: var(--series-1); }
+.chart .hit { fill: transparent; cursor: default; }
+.chart .hit:hover + .bar, .chart .bar.hover { filter: brightness(1.15); }
+.tip {
+  position: fixed; z-index: 50; pointer-events: none; background: var(--ink); color: var(--surface);
+  padding: 8px 10px; border-radius: 10px; font-size: 12.5px; line-height: 1.35; max-width: 260px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18); opacity: 0; transition: opacity .1s;
+}
+.tip.show { opacity: 1; }
+.tip b { font-size: 14px; }
+.tip .k { opacity: .75; }
+.heat { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 2px; font-size: 10.5px; color: var(--muted); }
+.heat .cell { aspect-ratio: 1 / 1; border-radius: 3px; background: var(--seq-0); min-width: 0; }
+.heat .rl { display: flex; align-items: center; font-size: 11px; color: var(--ink-2); }
+.heat .cl { text-align: center; font-variant-numeric: tabular-nums; }
+.legend-scale { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
+.legend-scale i { width: 16px; height: 10px; border-radius: 2px; display: inline-block; }
+.rank { display: flex; flex-direction: column; gap: 7px; }
+.rank .row { display: grid; grid-template-columns: minmax(90px, 38%) 1fr 56px; align-items: center; gap: 10px; font-size: 13px; }
+.rank .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.rank .track { height: 12px; background: var(--surface-2); border-radius: 0 4px 4px 0; overflow: hidden; }
+.rank .fill { height: 100%; background: var(--series-1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.rank .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.rank .more { font-size: 12px; color: var(--muted); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs button { border: 1px solid var(--border); background: transparent; border-radius: 999px; padding: 4px 11px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.tabs button.on { background: var(--surface-2); color: var(--ink); border-color: var(--axis); }
+.tablewrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; vertical-align: middle; }
+th { font-size: 12px; color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--surface); }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+th .arr { color: var(--muted); font-size: 10px; margin-left: 3px; }
+tbody tr:hover td { background: var(--surface-2); }
+tr.click { cursor: pointer; }
+td .minibar { display: inline-block; vertical-align: middle; height: 8px; background: var(--series-1); border-radius: 0 3px 3px 0; margin-right: 6px; }
+td .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--surface-2); color: var(--ink-2); }
+td .pill.good { color: var(--good); }
+td .pill.bad { color: var(--bad); }
+.sub-cell { color: var(--muted); font-size: 12px; }
+.pen { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 2px 4px; font-size: 12px; }
+.pen:hover { color: var(--ink); }
+.empty { padding: 30px 10px; text-align: center; color: var(--muted); font-size: 14px; }
+.gate { max-width: 460px; margin: 60px auto; text-align: center; }
+.gate h2 { font-size: 20px; margin: 0 0 8px; }
+.gate p { color: var(--ink-2); margin: 0 0 20px; }
+.notice { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; margin-bottom: 14px; }
+.drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; display: none; }
+.drawer-bg.show { display: block; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--page); z-index: 41;
+  transform: translateX(100%); transition: transform .22s ease; overflow-y: auto; padding: 18px 16px 40px;
+  border-left: 1px solid var(--border);
+}
+.drawer.show { transform: none; }
+.drawer h3 { margin: 0; font-size: 18px; }
+.drawer .meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; margin: 14px 0; }
+.drawer .meta span:nth-child(odd) { color: var(--muted); }
+.timeline { display: flex; flex-direction: column; gap: 10px; }
+.sess { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.sess .h { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.sess .h span:last-child { color: var(--muted); font-weight: 500; }
+.sess ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
+footer { margin-top: 26px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+footer button { font-size: 12px; padding: 5px 10px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <header class="top">
+    <div>
+      <h1>Top Rallisi · Oyun Raporu</h1>
+      <div class="sub" id="updated">Henüz yüklenmedi</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="who" id="who"></span>
+    <button class="btn" id="signout" hidden>Çıkış</button>
+    <button class="btn primary" id="refresh" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
+      Yenile
+    </button>
+  </header>
+  <div id="main"></div>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+
+<script type="module">
+// ---------------- Ayarlar ----------------
+// Firebase web ayarları gizli değildir; okuma izni Firestore kurallarıyla sadece sahibine verilir.
+const FB = {
+  apiKey: '',
+  authDomain: '',
+  projectId: '',
+};
+const COLLECTION = 'logs';
+const SDK = 'https://www.gstatic.com/firebasejs/10.12.2';
+
+const $ = (s, el = document) => el.querySelector(s);
+const main = $('#main');
+const tip = $('#tip');
+
+// ---------------- Küçük yardımcılar ----------------
+function el(tag, attrs = {}, kids = []) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'style') e.style.cssText = v;
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of [].concat(kids)) if (c != null && c !== false) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return e;
+}
+const svgNS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs = {}) {
+  const e = document.createElementNS(svgNS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null) e.setAttribute(k, v);
+  return e;
+}
+const nf = new Intl.NumberFormat('tr-TR');
+const nf1 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+const fmtN = (n) => nf.format(Math.round(n || 0));
+const fmtPct = (x) => (isFinite(x) ? `%${nf.format(Math.round(x * 100))}` : '–');
+function fmtDur(sec) {
+  sec = Math.max(0, Math.round(sec || 0));
+  if (sec < 60) return `${sec} sn`;
+  const m = Math.floor(sec / 60), h = Math.floor(m / 60);
+  if (h === 0) return `${m} dk${sec % 60 && m < 10 ? ` ${sec % 60} sn` : ''}`;
+  return `${h} sa ${m % 60} dk`;
+}
+const dtf = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const dtfY = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dfDay = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
+const dfLong = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+function fmtDate(ms) {
+  if (!ms) return '–';
+  const d = new Date(ms);
+  return (d.getFullYear() === new Date().getFullYear() ? dtf : dtfY).format(d);
+}
+function ago(ms) {
+  const s = (Date.now() - ms) / 1000;
+  if (s < 90) return 'az önce';
+  if (s < 3600) return `${Math.round(s / 60)} dk önce`;
+  if (s < 86400) return `${Math.round(s / 3600)} sa önce`;
+  return `${Math.round(s / 86400)} gün önce`;
+}
+const dayKey = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const startOfDay = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+function showTip(evt, nodes) {
+  tip.replaceChildren(...nodes);
+  tip.classList.add('show');
+  const pad = 14, r = tip.getBoundingClientRect();
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + r.width > innerWidth - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > innerHeight - 8) y = evt.clientY - r.height - pad;
+  tip.style.left = `${Math.max(8, x)}px`;
+  tip.style.top = `${Math.max(8, y)}px`;
+}
+const hideTip = () => tip.classList.remove('show');
+
+// ---------------- Yerel tercihler ----------------
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('tr-rapor.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('tr-rapor.' + k, JSON.stringify(v)); } catch {} },
+};
+let nick = LS.get('nick', {});
+const state = {
+  range: LS.get('range', '30'),
+  hideDev: LS.get('hideDev', true),
+  dailyMetric: LS.get('dailyMetric', 'players'),
+  deviceTab: LS.get('deviceTab', 'model'),
+  placeTab: LS.get('placeTab', 'city'),
+};
+
+// ---------------- Önbellek (IndexedDB) ----------------
+// Kayıtlar değişmez (sadece eklenir); bu yüzden bir kez indirilen kayıt burada saklanır,
+// "Yenile" sadece son kayıttan sonrakileri indirir.
+const idb = {
+  db: null,
+  open() {
+    if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('tr-rapor-' + (FB.projectId || 'x'), 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('logs', { keyPath: 'id' });
+      r.onsuccess = () => { this.db = r.result; res(this.db); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async all() {
+    try {
+      const db = await this.open();
+      return await new Promise((res, rej) => {
+        const q = db.transaction('logs').objectStore('logs').getAll();
+        q.onsuccess = () => res(q.result || []);
+        q.onerror = () => rej(q.error);
+      });
+    } catch { return []; }
+  },
+  async put(docs) {
+    try {
+      const db = await this.open();
+      await new Promise((res, rej) => {
+        const tx = db.transaction('logs', 'readwrite');
+        const st = tx.objectStore('logs');
+        for (const d of docs) st.put(d);
+        tx.oncomplete = res;
+        tx.onerror = () => rej(tx.error);
+      });
+    } catch {}
+  },
+  async clear() {
+    try {
+      const db = await this.open();
+      await new Promise((res) => { const tx = db.transaction('logs', 'readwrite'); tx.objectStore('logs').clear(); tx.oncomplete = res; tx.onerror = res; });
+    } catch {}
+  },
+};
+
+// ---------------- Firebase ----------------
+let fb = null;
+let docs = [];
+let user = null;
+
+async function loadFirebase() {
+  const [{ initializeApp }, auth, store] = await Promise.all([
+    import(`${SDK}/firebase-app.js`),
+    import(`${SDK}/firebase-auth.js`),
+    import(`${SDK}/firebase-firestore-lite.js`),
+  ]);
+  const app = initializeApp(FB);
+  fb = { auth, store, a: auth.getAuth(app), db: store.getFirestore(app) };
+  return fb;
+}
+
+function normalize(id, d) {
+  const at = d.at && typeof d.at.toMillis === 'function' ? d.at.toMillis() : (typeof d.at === 'number' ? d.at : d.ts);
+  return { ...d, id, at };
+}
+
+async function fetchNew() {
+  const { store, db } = fb;
+  const last = docs.reduce((m, d) => Math.max(m, d.at || 0), 0);
+  const col = store.collection(db, COLLECTION);
+  const q = last
+    ? store.query(col, store.where('at', '>', store.Timestamp.fromMillis(last - 1)), store.orderBy('at'))
+    : store.query(col, store.orderBy('at'));
+  const snap = await store.getDocs(q);
+  const known = new Set(docs.map((d) => d.id));
+  const fresh = [];
+  snap.forEach((s) => { if (!known.has(s.id)) fresh.push(normalize(s.id, s.data())); });
+  if (fresh.length) {
+    docs = docs.concat(fresh);
+    await idb.put(fresh);
+  }
+  return fresh.length;
+}
+
+// ---------------- Analiz ----------------
+const IPHONES = {
+  '320x568': 'iPhone SE (1.) / 5s',
+  '375x667': 'iPhone 6/7/8 / SE',
+  '414x736': 'iPhone 6/7/8 Plus',
+  '375x812': 'iPhone X/XS/11 Pro/12-13 mini',
+  '414x896@2': 'iPhone XR / 11',
+  '414x896@3': 'iPhone XS Max / 11 Pro Max',
+  '390x844': 'iPhone 12/13/14',
+  '428x926': 'iPhone 12-13 Pro Max / 14 Plus',
+  '393x852': 'iPhone 14 Pro / 15 / 16',
+  '430x932': 'iPhone 14 Pro Max / 15-16 Plus',
+  '402x874': 'iPhone 16 Pro / 17',
+  '440x956': 'iPhone 16-17 Pro Max',
+  '420x912': 'iPhone Air',
+};
+function deviceName(dev) {
+  if (!dev) return 'Bilinmiyor';
+  if (dev.model === 'iPhone') {
+    const w = Math.min(dev.sw, dev.sh), h = Math.max(dev.sw, dev.sh);
+    return IPHONES[`${w}x${h}@${Math.round(dev.dpr)}`] || IPHONES[`${w}x${h}`] || 'iPhone';
+  }
+  if (dev.model) {
+    if (/^SM-/.test(dev.model)) return `Samsung ${dev.model}`;
+    return dev.model;
+  }
+  if (dev.kind === 'Bilgisayar') return `${dev.os} bilgisayar`;
+  return `${dev.os} ${dev.kind ? dev.kind.toLowerCase() : 'cihaz'}`;
+}
+function osName(dev) { return dev ? `${dev.os}${dev.osv ? ' ' + dev.osv.split('.')[0] : ''}` : 'Bilinmiyor'; }
+function placeName(geo) {
+  if (!geo) return 'Bilinmiyor';
+  const parts = [geo.city, geo.cc && geo.cc !== 'TR' ? geo.country : null].filter(Boolean);
+  return parts.join(', ') || geo.country || 'Bilinmiyor';
+}
+function levelLabel(meta, id) {
+  if (!meta) return id;
+  return `Dünya ${meta.w} · ${meta.n}. etap`;
+}
+const levelOrder = (meta, id) => (meta ? meta.w * 1000 + meta.n : 99999) + (id ? 0 : 0);
+
+function buildSessions(all) {
+  const map = new Map();
+  for (const d of all) {
+    if (!d.sid || !d.pid) continue;
+    let s = map.get(d.sid);
+    if (!s) {
+      s = { sid: d.sid, pid: d.pid, start: Infinity, last: 0, active: 0, events: [], dev: null, geo: null, app: d.app, docs: 0 };
+      map.set(d.sid, s);
+    }
+    s.docs++;
+    // Sunucu saatine göre oturum başlangıcı (telefon saati kaymış olabilir)
+    const offset = (d.ts || 0) - (d.start || d.ts || 0);
+    s.start = Math.min(s.start, (d.at || d.ts) - offset);
+    s.last = Math.max(s.last, d.at || d.ts);
+    s.active = Math.max(s.active, d.active || 0);
+    if (d.dev && !s.dev) s.dev = d.dev;
+    if (d.geo && !s.geo) s.geo = d.geo;
+    if (d.app) s.app = d.app;
+    for (const e of d.events || []) s.events.push(e);
+  }
+  const out = [];
+  for (const s of map.values()) {
+    s.events.sort((a, b) => a.t - b.t);
+    const st = s.events.find((e) => e.e === 'start');
+    s.isDev = !!(st && (st.dev || st.local));
+    if (!isFinite(s.start)) s.start = s.last;
+    // Ekranın açık kaldığı süre; gönderim gecikmişse olay zamanlarıyla tamamlanır
+    const lastT = s.events.length ? s.events[s.events.length - 1].t / 1000 : 0;
+    s.dur = Math.max(s.active, Math.min(lastT, s.active + 120));
+    s.levelSec = 0;
+    s.ls = 0; s.le = 0;
+    for (const e of s.events) {
+      if (e.e === 'ls') s.ls++;
+      if (e.e === 'le') s.le++;
+      if ((e.e === 'le' || e.e === 'lq') && e.dur) s.levelSec += e.dur;
+    }
+    out.push(s);
+  }
+  // Cihaz/konum sonradan gelmediyse aynı oyuncunun önceki oturumundan al
+  out.sort((a, b) => a.start - b.start);
+  const lastDev = new Map(), lastGeo = new Map();
+  for (const s of out) {
+    if (s.dev) lastDev.set(s.pid, s.dev); else s.dev = lastDev.get(s.pid) || null;
+    if (s.geo) lastGeo.set(s.pid, s.geo); else s.geo = lastGeo.get(s.pid) || null;
+  }
+  return out;
+}
+
+function rangeStart(range) {
+  if (range === 'all') return 0;
+  if (range === 'today') return startOfDay(Date.now());
+  return startOfDay(Date.now()) - (Number(range) - 1) * 86400000;
+}
+
+function analyze(all) {
+  const sessionsAll = buildSessions(all).filter((s) => !(state.hideDev && s.isDev));
+  const from = rangeStart(state.range);
+  const sessions = sessionsAll.filter((s) => s.start >= from);
+  const firstSeen = new Map();
+  for (const s of sessionsAll) if (!firstSeen.has(s.pid)) firstSeen.set(s.pid, s.start);
+
+  // Etap bilgisi (dünya, sıra) bütün kayıtlardan
+  const levelMeta = new Map();
+  for (const s of sessionsAll) for (const e of s.events) if (e.e === 'ls' && e.w && e.n) levelMeta.set(e.lvl, { w: e.w, n: e.n });
+
+  const players = new Map();
+  const levels = new Map();
+  const lv = (id) => {
+    let l = levels.get(id);
+    if (!l) { l = { id, meta: levelMeta.get(id), starts: 0, wins: 0, quits: 0, restarts: 0, times: [], falls: [], players: new Set(), winners: new Set(), firstWins: 0, stars: [0, 0, 0, 0] }; levels.set(id, l); }
+    return l;
+  };
+  const buys = [];
+  const qdowns = [];
+  let totalLevelSec = 0;
+  for (const s of sessions) {
+    let p = players.get(s.pid);
+    if (!p) { p = { pid: s.pid, sessions: [], first: firstSeen.get(s.pid), last: 0, dur: 0, levelSec: 0, starts: 0, wins: 0, best: null, bestOrder: -1, dev: null, geo: null, buys: 0, falls: 0 }; players.set(s.pid, p); }
+    p.sessions.push(s);
+    p.last = Math.max(p.last, s.last);
+    p.dur += s.dur;
+    p.levelSec += s.levelSec;
+    totalLevelSec += s.levelSec;
+    p.dev = s.dev || p.dev;
+    p.geo = s.geo || p.geo;
+    for (const e of s.events) {
+      if (e.e === 'ls') { const l = lv(e.lvl); l.starts++; l.players.add(s.pid); p.starts++; }
+      else if (e.e === 'le') {
+        const l = lv(e.lvl); l.wins++; l.winners.add(s.pid); p.wins++;
+        if (typeof e.time === 'number') l.times.push(e.time);
+        if (typeof e.falls === 'number') { l.falls.push(e.falls); p.falls += e.falls; }
+        if (e.first) l.firstWins++;
+        if (typeof e.stars === 'number') l.stars[Math.max(0, Math.min(3, e.stars))]++;
+        const o = levelOrder(levelMeta.get(e.lvl));
+        if (o > p.bestOrder) { p.bestOrder = o; p.best = e.lvl; }
+      } else if (e.e === 'lq') {
+        const l = lv(e.lvl);
+        if (e.why === 'restart') l.restarts++; else l.quits++;
+        if (typeof e.falls === 'number') { l.falls.push(e.falls); p.falls += e.falls; }
+      } else if (e.e === 'buy') { buys.push({ at: s.start + e.t, pid: s.pid, item: e.item, price: e.price }); p.buys++; }
+      else if (e.e === 'qdown') qdowns.push({ s, e });
+    }
+  }
+  const newPlayers = [...players.values()].filter((p) => p.first >= from).length;
+  return { sessions, sessionsAll, players: [...players.values()], levels: [...levels.values()], levelMeta, buys, qdowns, totalLevelSec, from, newPlayers };
+}
+
+// ---------------- Bileşenler ----------------
+function card(title, hint, body, extra) {
+  return el('section', { class: 'card stale' }, [
+    el('h2', { text: title }),
+    hint ? el('p', { class: 'hint', text: hint }) : null,
+    extra || null,
+    body,
+  ]);
+}
+function kpi(label, value, foot) {
+  return el('div', { class: 'card kpi stale' }, [el('div', { class: 'label', text: label }), el('div', { class: 'value', text: value }), foot ? el('div', { class: 'foot', text: foot }) : null]);
+}
+function tabs(options, value, onChange) {
+  const box = el('div', { class: 'tabs', role: 'tablist' });
+  for (const [v, label] of options) box.append(el('button', { class: v === value ? 'on' : '', role: 'tab', 'aria-selected': String(v === value), text: label, onclick: () => onChange(v) }));
+  return box;
+}
+function niceMax(v) {
+  if (v <= 4) return Math.max(1, Math.ceil(v));
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+
+/** Günlük sütun grafiği (tek seri) */
+function dailyChart(days, metric) {
+  // Dar ekranda yazılar okunsun diye daha küçük bir çizim alanı (aynı oranda büyür)
+  const W = innerWidth < 640 ? 400 : 760, H = innerWidth < 640 ? 200 : 220, L = 34, R = 6, T = 10, B = 26;
+  const vals = days.map((d) => d[metric]);
+  const max = niceMax(Math.max(1, ...vals));
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Günlük etkinlik grafiği' });
+  const ih = H - T - B, iw = W - L - R;
+  for (let i = 0; i <= 4; i++) {
+    const y = T + ih - (ih * i) / 4;
+    svg.append(sv('line', { x1: L, x2: W - R, y1: y, y2: y, class: i === 0 ? 'baseline' : 'gridline' }));
+    const t = sv('text', { x: L - 6, y: y + 4, 'text-anchor': 'end', class: 'tick' });
+    t.textContent = metric === 'minutes' ? nf1.format((max * i) / 4) : nf.format((max * i) / 4);
+    svg.append(t);
+  }
+  const n = days.length, slot = iw / n, bw = Math.max(2, Math.min(28, slot - 2));
+  const labelEvery = Math.ceil(n / 10);
+  days.forEach((d, i) => {
+    const v = d[metric];
+    const h = (ih * v) / max;
+    const x = L + i * slot + (slot - bw) / 2;
+    const y = T + ih - h;
+    const r = Math.min(4, bw / 2, h);
+    const g = sv('g');
+    const hit = sv('rect', { x: L + i * slot, y: T, width: slot, height: ih + 1, class: 'hit', tabindex: '0', 'aria-label': `${d.label}: ${v}` });
+    const path = h > 0
+      ? sv('path', { class: 'bar', d: `M${x},${T + ih} V${y + r} Q${x},${y} ${x + r},${y} H${x + bw - r} Q${x + bw},${y} ${x + bw},${y + r} V${T + ih} Z` })
+      : null;
+    const tipNodes = () => [
+      el('div', {}, [el('b', { text: metric === 'minutes' ? fmtDur(d.minutes * 60) : fmtN(v) }), ' ', el('span', { class: 'k', text: { players: 'oyuncu', sessions: 'oturum', minutes: '' }[metric] })]),
+      el('div', { class: 'k', text: dfLong.format(new Date(d.ms)) }),
+      el('div', { text: `${fmtN(d.players)} oyuncu · ${fmtN(d.sessions)} oturum · ${fmtDur(d.minutes * 60)}` }),
+    ];
+    const on = (e) => { path?.classList.add('hover'); showTip(e, tipNodes()); };
+    const off = () => { path?.classList.remove('hover'); hideTip(); };
+    hit.addEventListener('pointermove', on);
+    hit.addEventListener('pointerleave', off);
+    hit.addEventListener('focus', (e) => { const r = hit.getBoundingClientRect(); on({ clientX: r.left + r.width / 2, clientY: r.top + 20 }); });
+    hit.addEventListener('blur', off);
+    g.append(hit);
+    if (path) g.append(path);
+    if (i % labelEvery === 0 || i === n - 1) {
+      if (i === n - 1 && i % labelEvery !== 0 && (n - 1) % labelEvery < labelEvery / 2) { /* son etiket öncekine çok yakınsa atla */ }
+      else {
+        const t = sv('text', { x: L + i * slot + slot / 2, y: H - 8, 'text-anchor': 'middle', class: 'tick' });
+        t.textContent = d.short;
+        g.append(t);
+      }
+    }
+    svg.append(g);
+  });
+  return el('div', { class: 'chart' }, [svg]);
+}
+
+/** Gün × saat ısı haritası */
+function heatmap(sessions) {
+  const grid = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  for (const s of sessions) { const d = new Date(s.start); grid[(d.getDay() + 6) % 7][d.getHours()]++; }
+  const max = Math.max(1, ...grid.flat());
+  const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  const dayLong = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+  const box = el('div', { class: 'heat', role: 'img', 'aria-label': 'Haftanın günü ve saate göre oturum sayısı' });
+  box.append(el('div'));
+  for (let h = 0; h < 24; h++) box.append(el('div', { class: 'cl', text: h % 3 === 0 ? String(h) : '' }));
+  for (let d = 0; d < 7; d++) {
+    box.append(el('div', { class: 'rl', text: days[d] }));
+    for (let h = 0; h < 24; h++) {
+      const v = grid[d][h];
+      const step = v === 0 ? 0 : Math.min(5, 1 + Math.floor((v / max) * 4.999));
+      const c = el('div', { class: 'cell', style: `background: var(--seq-${step})` });
+      c.addEventListener('pointermove', (e) => showTip(e, [el('div', {}, [el('b', { text: fmtN(v) }), el('span', { class: 'k', text: ' oturum' })]), el('div', { class: 'k', text: `${dayLong[d]} ${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` })]));
+      c.addEventListener('pointerleave', hideTip);
+      box.append(c);
+    }
+  }
+  const legend = el('div', { class: 'legend-scale' }, ['Az', ...[1, 2, 3, 4, 5].map((i) => el('i', { style: `background: var(--seq-${i})` })), 'Çok', el('span', { style: 'margin-left:auto', text: `en yoğun saat: ${fmtN(max)} oturum` })]);
+  return el('div', {}, [box, legend]);
+}
+
+/** Sıralı yatay çubuklar */
+function ranked(entries, { unit = '', limit = 10 } = {}) {
+  if (!entries.length) return el('div', { class: 'empty', text: 'Veri yok' });
+  const sorted = entries.slice().sort((a, b) => b[1] - a[1]);
+  const top = sorted.slice(0, limit);
+  const max = top[0][1] || 1;
+  const box = el('div', { class: 'rank' });
+  for (const [name, v, extra] of top) {
+    const row = el('div', { class: 'row' }, [
+      el('div', { class: 'name', title: name, text: name }),
+      el('div', { class: 'track' }, [el('div', { class: 'fill', style: `width:${(v / max) * 100}%` })]),
+      el('div', { class: 'num', text: fmtN(v) }),
+    ]);
+    row.addEventListener('pointermove', (e) => showTip(e, [el('div', {}, [el('b', { text: fmtN(v) }), el('span', { class: 'k', text: ' ' + unit })]), el('div', { text: name }), extra ? el('div', { class: 'k', text: extra }) : null].filter(Boolean)));
+    row.addEventListener('pointerleave', hideTip);
+    box.append(row);
+  }
+  if (sorted.length > limit) {
+    const rest = sorted.slice(limit).reduce((n, e) => n + e[1], 0);
+    box.append(el('div', { class: 'more', text: `+ ${sorted.length - limit} diğer (${fmtN(rest)} ${unit})` }));
+  }
+  return box;
+}
+
+/** Sıralanabilir tablo */
+function table(cols, rows, { sortKey, desc = true, onRow, limit, id } = {}) {
+  const saved = id ? LS.get('sort.' + id, null) : null;
+  let key = saved?.key ?? sortKey ?? cols[0].key;
+  let dsc = saved?.desc ?? desc;
+  let showAll = false;
+  const wrap = el('div', { class: 'tablewrap' });
+  const draw = () => {
+    const col = cols.find((c) => c.key === key) || cols[0];
+    const sv = col.sort || ((r) => r[col.key]);
+    const sorted = rows.slice().sort((a, b) => {
+      const x = sv(a), y = sv(b);
+      const c = typeof x === 'string' || typeof y === 'string' ? String(x ?? '').localeCompare(String(y ?? ''), 'tr') : (x ?? -Infinity) - (y ?? -Infinity);
+      return dsc ? -c : c;
+    });
+    const shown = limit && !showAll ? sorted.slice(0, limit) : sorted;
+    const thead = el('thead', {}, el('tr', {}, cols.map((c) => {
+      const th = el('th', { class: c.num ? 'num' : '', scope: 'col', 'aria-sort': c.key === key ? (dsc ? 'descending' : 'ascending') : 'none' }, [c.label, c.key === key ? el('span', { class: 'arr', text: dsc ? '▼' : '▲' }) : null]);
+      th.addEventListener('click', () => {
+        if (key === c.key) dsc = !dsc; else { key = c.key; dsc = !!c.num; }
+        if (id) LS.set('sort.' + id, { key, desc: dsc });
+        draw();
+      });
+      return th;
+    })));
+    const tbody = el('tbody');
+    for (const r of shown) {
+      const tr = el('tr', { class: onRow ? 'click' : '' }, cols.map((c) => {
+        const td = el('td', { class: c.num ? 'num' : '' });
+        const v = c.render ? c.render(r) : r[c.key];
+        if (v instanceof Node) td.append(v); else if (Array.isArray(v)) td.append(...v.filter((x) => x != null)); else td.textContent = v ?? '–';
+        return td;
+      }));
+      if (onRow) tr.addEventListener('click', (e) => { if (!e.target.closest('button')) onRow(r); });
+      tbody.append(tr);
+    }
+    const tbl = el('table', {}, [thead, tbody]);
+    const kids = [tbl];
+    if (limit && sorted.length > limit) kids.push(el('div', { style: 'padding-top:10px' }, el('button', { class: 'btn', text: showAll ? 'Daha az göster' : `Tümünü göster (${sorted.length})`, onclick: () => { showAll = !showAll; draw(); } })));
+    wrap.replaceChildren(...kids);
+  };
+  draw();
+  if (!rows.length) return el('div', { class: 'empty', text: 'Bu aralıkta veri yok' });
+  return wrap;
+}
+
+function playerName(pid) { return nick[pid] || `Oyuncu ${pid.slice(0, 5).toUpperCase()}`; }
+function renameBtn(pid) {
+  return el('button', { class: 'pen', title: 'Bu oyuncuya ad ver (sadece bu tarayıcıda saklanır)', 'aria-label': 'Ad ver', text: '✎', onclick: (e) => {
+    e.stopPropagation();
+    const v = prompt('Bu oyuncu için bir ad yaz (boş bırakırsan silinir):', nick[pid] || '');
+    if (v === null) return;
+    if (v.trim()) nick[pid] = v.trim().slice(0, 40); else delete nick[pid];
+    LS.set('nick', nick);
+    render();
+  } });
+}
+
+// ---------------- Oyuncu ayrıntısı ----------------
+function openPlayer(p, model) {
+  const d = $('#drawer'), bg = $('#drawerBg');
+  const close = () => { d.classList.remove('show'); bg.classList.remove('show'); d.setAttribute('aria-hidden', 'true'); };
+  bg.onclick = close;
+  const all = model.sessionsAll.filter((s) => s.pid === p.pid).sort((a, b) => b.start - a.start);
+  const dev = p.dev || {};
+  const meta = el('div', { class: 'meta' }, [
+    el('span', { text: 'Kimlik' }), el('span', { text: p.pid }),
+    el('span', { text: 'İlk oynama' }), el('span', { text: fmtDate(p.first) }),
+    el('span', { text: 'Son görülme' }), el('span', { text: `${fmtDate(p.last)} (${ago(p.last)})` }),
+    el('span', { text: 'Toplam oturum' }), el('span', { text: `${fmtN(all.length)} (tüm zamanlar)` }),
+    el('span', { text: 'Toplam süre' }), el('span', { text: fmtDur(all.reduce((n, s) => n + s.dur, 0)) }),
+    el('span', { text: 'Cihaz' }), el('span', { text: `${deviceName(p.dev)} · ${osName(p.dev)} · ${dev.browser || ''}` }),
+    el('span', { text: 'Ekran' }), el('span', { text: dev.sw ? `${dev.sw}×${dev.sh} @${dev.dpr}x${dev.pwa ? ' · ana ekrana eklenmiş' : ''}` : '–' }),
+    el('span', { text: 'Konum' }), el('span', { text: p.geo ? [p.geo.city, p.geo.region, p.geo.country].filter(Boolean).join(', ') + (p.geo.isp ? ` · ${p.geo.isp}` : '') : '–' }),
+    dev.gpu ? el('span', { text: 'Ekran kartı' }) : null, dev.gpu ? el('span', { text: dev.gpu }) : null,
+  ]);
+  const tl = el('div', { class: 'timeline' });
+  for (const s of all.slice(0, 60)) {
+    const items = [];
+    for (const e of s.events) {
+      const lab = levelLabel(model.levelMeta.get(e.lvl), e.lvl);
+      if (e.e === 'le') items.push(`${lab}: bitirdi, ${nf1.format(e.time)} sn, ${e.stars} yıldız, ${e.falls} düşüş${e.rec ? ', rekor' : ''}`);
+      else if (e.e === 'lq') items.push(`${lab}: ${e.why === 'restart' ? 'yeniden başlattı' : 'yarıda bıraktı'}${e.falls ? `, ${e.falls} düşüş` : ''}${e.dur ? `, ${fmtDur(e.dur)}` : ''}`);
+      else if (e.e === 'buy') items.push(`Mağaza: ${e.item} aldı (${fmtN(e.price)} puan)`);
+    }
+    tl.append(el('div', { class: 'sess' }, [
+      el('div', { class: 'h' }, [el('span', { text: fmtDate(s.start) }), el('span', { text: `${fmtDur(s.dur)} · ${placeName(s.geo)}` })]),
+      items.length ? el('ul', {}, items.slice(0, 30).map((t) => el('li', { text: t }))) : el('div', { class: 'sub-cell', text: 'Etap oynanmadı (menüde gezindi)' }),
+    ]));
+  }
+  d.replaceChildren(
+    el('div', { style: 'display:flex;align-items:center;gap:10px' }, [el('h3', { text: playerName(p.pid) }), renameBtn(p.pid), el('div', { style: 'flex:1' }), el('button', { class: 'btn', text: 'Kapat', onclick: close })]),
+    meta,
+    el('h2', { style: 'font-size:15px;margin:18px 0 10px', text: 'Oturumlar' }),
+    tl,
+  );
+  d.classList.add('show'); bg.classList.add('show'); d.setAttribute('aria-hidden', 'false');
+  d.scrollTop = 0;
+}
+
+// ---------------- Çizim ----------------
+let model = null;
+
+function render() {
+  if (!user) return;
+  model = analyze(docs);
+  const m = model;
+  const { sessions, players } = m;
+  const kids = [];
+
+  // Filtreler
+  const ranges = [['today', 'Bugün'], ['7', '7 gün'], ['30', '30 gün'], ['90', '90 gün'], ['all', 'Tümü']];
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Tarih aralığı' }, ranges.map(([v, l]) => el('button', { class: state.range === v ? 'on' : '', text: l, onclick: () => { state.range = v; LS.set('range', v); render(); } })));
+  const dev = el('input', { type: 'checkbox' }); dev.checked = state.hideDev;
+  dev.addEventListener('change', () => { state.hideDev = dev.checked; LS.set('hideDev', dev.checked); render(); });
+  kids.push(el('div', { class: 'filters' }, [seg, el('label', { class: 'check' }, [dev, 'Deneme oturumlarını gizle (?dev=1, yerel)']), el('span', { class: 'status', id: 'status' })]));
+
+  if (!docs.length) {
+    kids.push(el('div', { class: 'card' }, el('div', { class: 'empty' }, ['Henüz hiç kayıt yok. Oyun yeni sürümle açıldıkça burada görünecek.', el('br'), 'Biri oynadıktan sonra "Yenile"ye bas.'])));
+    main.replaceChildren(...kids);
+    return;
+  }
+
+  // Özet
+  const totalDur = sessions.reduce((n, s) => n + s.dur, 0);
+  const starts = m.levels.reduce((n, l) => n + l.starts, 0);
+  const wins = m.levels.reduce((n, l) => n + l.wins, 0);
+  const returning = players.filter((p) => p.sessions.length > 1 || p.first < m.from).length;
+  kids.push(el('div', { class: 'grid kpis' }, [
+    kpi('Oyuncu', fmtN(players.length), `${fmtN(m.newPlayers)} yeni · ${fmtN(returning)} geri dönen`),
+    kpi('Oturum', fmtN(sessions.length), players.length ? `oyuncu başına ${nf1.format(sessions.length / players.length)}` : ''),
+    kpi('Toplam oyun süresi', fmtDur(totalDur), `etap içinde ${fmtDur(m.totalLevelSec)}`),
+    kpi('Ortalama oturum', fmtDur(sessions.length ? totalDur / sessions.length : 0), sessions.length ? `en uzun ${fmtDur(Math.max(...sessions.map((s) => s.dur)))}` : ''),
+    kpi('Etap denemesi', fmtN(starts), `${fmtN(wins)} bitirildi`),
+    kpi('Bitirme oranı', starts ? fmtPct(wins / starts) : '–', 'bitirilen / başlanan'),
+  ]));
+
+  // Günlük etkinlik
+  const from = state.range === 'all' ? startOfDay(Math.min(...sessions.map((s) => s.start), Date.now())) : m.from;
+  const nDays = Math.max(1, Math.round((startOfDay(Date.now()) - startOfDay(from)) / 86400000) + 1);
+  const dayMap = new Map();
+  for (let i = 0; i < nDays; i++) {
+    const ms = startOfDay(from) + i * 86400000 + 3600000 * 3;
+    const d0 = startOfDay(ms);
+    dayMap.set(dayKey(d0), { ms: d0, label: dfLong.format(new Date(d0)), short: dfDay.format(new Date(d0)), players: 0, sessions: 0, minutes: 0, _p: new Set() });
+  }
+  for (const s of sessions) {
+    const d = dayMap.get(dayKey(s.start));
+    if (!d) continue;
+    d.sessions++; d.minutes += s.dur / 60; d._p.add(s.pid);
+  }
+  const days = [...dayMap.values()].map((d) => ({ ...d, players: d._p.size }));
+  const metricTabs = tabs([['players', 'Oyuncu'], ['sessions', 'Oturum'], ['minutes', 'Dakika']], state.dailyMetric, (v) => { state.dailyMetric = v; LS.set('dailyMetric', v); render(); });
+  const dayCard = card('Günlük etkinlik', 'Her gün kaç kişi oynadı. Çubuğun üstüne gelince o günün ayrıntısı çıkar.', days.length > 1 ? dailyChart(days, state.dailyMetric) : el('div', { class: 'empty', text: `Bugün: ${fmtN(days[0]?.players)} oyuncu, ${fmtN(days[0]?.sessions)} oturum, ${fmtDur((days[0]?.minutes || 0) * 60)}` }), metricTabs);
+  kids.push(el('div', { class: 'grid' }, [dayCard]));
+
+  // Saat ve konum
+  const placeTabs = tabs([['city', 'Şehir'], ['region', 'Bölge'], ['country', 'Ülke'], ['isp', 'İnternet sağlayıcı']], state.placeTab, (v) => { state.placeTab = v; LS.set('placeTab', v); render(); });
+  const placeCount = new Map();
+  for (const p of players) {
+    const g = p.geo || {};
+    const k = state.placeTab === 'city' ? placeName(p.geo) : (g[state.placeTab] || 'Bilinmiyor');
+    placeCount.set(k, (placeCount.get(k) || 0) + 1);
+  }
+  kids.push(el('div', { class: 'grid two' }, [
+    card('Ne zaman oynuyorlar?', 'Oturumların başladığı gün ve saat (senin saat dilimine göre).', heatmap(sessions)),
+    card('Nereden oynuyorlar?', 'Oyuncu sayısı. Konum internet bağlantısından tahmin edilir; şehir düzeyindedir, mobil hatta yakındaki büyük şehri gösterebilir.', ranked([...placeCount], { unit: 'oyuncu', limit: 10 }), placeTabs),
+  ]));
+
+  // Cihazlar
+  const devTabs = tabs([['model', 'Cihaz'], ['os', 'İşletim sistemi'], ['browser', 'Tarayıcı'], ['kind', 'Tür'], ['screen', 'Ekran'], ['pwa', 'Ana ekranda mı?']], state.deviceTab, (v) => { state.deviceTab = v; LS.set('deviceTab', v); render(); });
+  const devCount = new Map();
+  for (const p of players) {
+    const d = p.dev;
+    const k = !d ? 'Bilinmiyor'
+      : state.deviceTab === 'model' ? deviceName(d)
+      : state.deviceTab === 'os' ? osName(d)
+      : state.deviceTab === 'browser' ? d.browser
+      : state.deviceTab === 'kind' ? d.kind
+      : state.deviceTab === 'screen' ? `${Math.min(d.sw, d.sh)}×${Math.max(d.sw, d.sh)}`
+      : d.pwa ? 'Ana ekrana eklenmiş (uygulama gibi)' : 'Tarayıcıdan';
+    devCount.set(k, (devCount.get(k) || 0) + 1);
+  }
+  // Performans: cihaz başına ortalama FPS
+  const fpsBy = new Map();
+  for (const s of sessions) for (const e of s.events) if (e.e === 'le' && e.fps) {
+    const k = deviceName(s.dev); const v = fpsBy.get(k) || [0, 0]; v[0] += e.fps; v[1]++; fpsBy.set(k, v);
+  }
+  const fpsRows = [...fpsBy].map(([k, [sum, n]]) => [k, Math.round(sum / n), `${n} etap ortalaması`]);
+  kids.push(el('div', { class: 'grid two' }, [
+    card('Hangi cihazla oynuyorlar?', 'Oyuncu sayısı (her oyuncunun son kullandığı cihaz). iPhone modeli ekran boyutundan tahmin edilir.', ranked([...devCount], { unit: 'oyuncu', limit: 10 }), devTabs),
+    card('Akıcılık (FPS)', 'Etap bitişindeki ortalama kare hızı; 60 akıcı, 45 altı takılır. Düşük olan cihazlarda kalite otomatik düşer.' + (m.qdowns.length ? ` Bu aralıkta ${m.qdowns.length} kez kalite düşürüldü.` : ''), fpsRows.length ? ranked(fpsRows, { unit: 'FPS', limit: 10 }) : el('div', { class: 'empty', text: 'Henüz bitirilmiş etap yok' })),
+  ]));
+
+  // Oyuncular
+  const maxDur = Math.max(1, ...players.map((p) => p.dur));
+  kids.push(el('div', { class: 'grid' }, [card('Oyuncular', 'Her satır bir telefon/tarayıcı. Ad ve e-posta toplanmaz; ✎ ile kendin ad verebilirsin. Satıra tıklayınca oturum geçmişi açılır.', table([
+    { key: 'name', label: 'Oyuncu', sort: (r) => playerName(r.pid), render: (r) => [playerName(r.pid), renameBtn(r.pid)] },
+    { key: 'last', label: 'Son görülme', num: true, render: (r) => [fmtDate(r.last), el('div', { class: 'sub-cell', text: ago(r.last) })] },
+    { key: 'first', label: 'İlk oynama', num: true, render: (r) => fmtDate(r.first) },
+    { key: 'sessions', label: 'Oturum', num: true, sort: (r) => r.sessions.length, render: (r) => fmtN(r.sessions.length) },
+    { key: 'dur', label: 'Süre', num: true, render: (r) => [el('span', { class: 'minibar', style: `width:${Math.max(2, (r.dur / maxDur) * 60)}px` }), fmtDur(r.dur)] },
+    { key: 'wins', label: 'Bitirdiği', num: true, render: (r) => `${fmtN(r.wins)} / ${fmtN(r.starts)}` },
+    { key: 'best', label: 'En ileri etap', sort: (r) => r.bestOrder, render: (r) => (r.best ? levelLabel(m.levelMeta.get(r.best), r.best) : '–') },
+    { key: 'dev', label: 'Cihaz', sort: (r) => deviceName(r.dev), render: (r) => [deviceName(r.dev), el('div', { class: 'sub-cell', text: `${osName(r.dev)} · ${r.dev?.browser || ''}` })] },
+    { key: 'geo', label: 'Konum', sort: (r) => placeName(r.geo), render: (r) => placeName(r.geo) },
+  ], players, { sortKey: 'last', id: 'players', limit: 25, onRow: (p) => openPlayer(p, m) }))]));
+
+  // Etaplar
+  const lvRows = m.levels.map((l) => {
+    const avg = (a) => (a.length ? a.reduce((n, x) => n + x, 0) / a.length : null);
+    return {
+      ...l,
+      label: levelLabel(l.meta, l.id),
+      order: levelOrder(l.meta),
+      rate: l.starts ? l.wins / l.starts : null,
+      avgTime: avg(l.times),
+      bestTime: l.times.length ? Math.min(...l.times) : null,
+      avgFalls: avg(l.falls),
+      nPlayers: l.players.size,
+      nWinners: l.winners.size,
+      stuck: l.players.size - l.winners.size,
+    };
+  });
+  kids.push(el('div', { class: 'grid' }, [card('Etaplar', 'Hangi etap zor? Bitirme oranı düşük, düşüş sayısı yüksek ve "takılan" oyuncusu çok olan etaplar zorlayıcıdır. Takılan: denedi ama hiç bitiremedi.', table([
+    { key: 'order', label: 'Etap', render: (r) => [r.label, el('div', { class: 'sub-cell', text: r.id })] },
+    { key: 'starts', label: 'Deneme', num: true, render: (r) => fmtN(r.starts) },
+    { key: 'nPlayers', label: 'Oyuncu', num: true, render: (r) => fmtN(r.nPlayers) },
+    { key: 'wins', label: 'Bitirme', num: true, render: (r) => fmtN(r.wins) },
+    { key: 'rate', label: 'Oran', num: true, render: (r) => (r.rate == null ? '–' : el('span', { class: `pill ${r.rate >= 0.6 ? 'good' : r.rate < 0.3 ? 'bad' : ''}`, text: fmtPct(r.rate) })) },
+    { key: 'stuck', label: 'Takılan', num: true, render: (r) => fmtN(r.stuck) },
+    { key: 'quits', label: 'Bırakma', num: true, render: (r) => `${fmtN(r.quits)}${r.restarts ? ` (+${fmtN(r.restarts)} yeniden)` : ''}` },
+    { key: 'avgFalls', label: 'Ort. düşüş', num: true, render: (r) => (r.avgFalls == null ? '–' : nf1.format(r.avgFalls)) },
+    { key: 'avgTime', label: 'Ort. süre', num: true, render: (r) => (r.avgTime == null ? '–' : `${nf1.format(r.avgTime)} sn`) },
+    { key: 'bestTime', label: 'En iyi', num: true, render: (r) => (r.bestTime == null ? '–' : `${nf1.format(r.bestTime)} sn`) },
+    { key: 'stars', label: 'Yıldız (1/2/3)', sort: (r) => r.stars[3], render: (r) => `${r.stars[1]} / ${r.stars[2]} / ${r.stars[3]}` },
+  ], lvRows, { sortKey: 'order', desc: false, id: 'levels' }))]));
+
+  // Son oturumlar ve mağaza
+  const recent = sessions.slice().sort((a, b) => b.start - a.start);
+  kids.push(el('div', { class: 'grid' }, [card('Son oturumlar', 'Oyunun her açılışı bir oturumdur; 30 dakikadan uzun aradan sonra dönüş yeni oturum sayılır.', table([
+    { key: 'start', label: 'Başlangıç', num: true, render: (r) => fmtDate(r.start) },
+    { key: 'pid', label: 'Oyuncu', sort: (r) => playerName(r.pid), render: (r) => playerName(r.pid) },
+    { key: 'dur', label: 'Süre', num: true, render: (r) => fmtDur(r.dur) },
+    { key: 'le', label: 'Etap (bitirdi/başladı)', num: true, render: (r) => `${fmtN(r.le)} / ${fmtN(r.ls)}` },
+    { key: 'dev', label: 'Cihaz', sort: (r) => deviceName(r.dev), render: (r) => deviceName(r.dev) },
+    { key: 'geo', label: 'Konum', sort: (r) => placeName(r.geo), render: (r) => placeName(r.geo) },
+    { key: 'app', label: 'Sürüm', render: (r) => r.app || '–' },
+  ], recent, { sortKey: 'start', id: 'recent', limit: 20, onRow: (s) => { const p = players.find((x) => x.pid === s.pid); if (p) openPlayer(p, m); } }))]));
+
+  if (m.buys.length) {
+    const itemCount = new Map();
+    for (const b of m.buys) itemCount.set(b.item, (itemCount.get(b.item) || 0) + 1);
+    kids.push(el('div', { class: 'grid' }, [card('Mağaza', `Bu aralıkta ${fmtN(m.buys.length)} satın alma, toplam ${fmtN(m.buys.reduce((n, b) => n + (b.price || 0), 0))} puan harcandı.`, ranked([...itemCount], { unit: 'kez alındı', limit: 12 }))]));
+  }
+
+  main.replaceChildren(...kids);
+}
+
+// ---------------- Akış ----------------
+const refreshBtn = $('#refresh');
+function setStatus(t) { const s = $('#status'); if (s) s.textContent = t; }
+function setUpdated() {
+  const n = docs.length;
+  $('#updated').textContent = `Son yenileme: ${new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date())} · ${fmtN(n)} kayıt`;
+}
+
+async function refresh() {
+  if (!fb || !user) return;
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('spin');
+  document.body.classList.add('loading');
+  try {
+    const n = await fetchNew();
+    render();
+    setUpdated();
+    setStatus(n ? `${fmtN(n)} yeni kayıt geldi` : 'Yeni kayıt yok');
+  } catch (e) {
+    console.error(e);
+    const denied = String(e && (e.code || e.message)).includes('permission');
+    render();
+    main.prepend(el('div', { class: 'notice', text: denied
+      ? `Bu Google hesabının (${user.email}) raporu okuma izni yok. Doğru hesapla giriş yap.`
+      : `Veriler alınamadı: ${e && e.message ? e.message : e}. İnternet bağlantını kontrol edip tekrar dene.` }));
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('spin');
+    document.body.classList.remove('loading');
+  }
+}
+
+function gate(msg, withButton = true) {
+  main.replaceChildren(el('div', { class: 'card gate' }, [
+    el('h2', { text: 'Rapora giriş' }),
+    el('p', { text: msg }),
+    withButton ? el('button', { class: 'btn primary', text: 'Google ile giriş yap', onclick: async () => {
+      try {
+        const { auth, a } = fb;
+        const provider = new auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await auth.signInWithPopup(a, provider);
+      } catch (e) {
+        if (e && e.code === 'auth/popup-blocked') {
+          await fb.auth.signInWithRedirect(fb.a, new fb.auth.GoogleAuthProvider());
+          return;
+        }
+        if (e && e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') alert('Giriş yapılamadı: ' + (e.message || e));
+      }
+    } }) : null,
+  ]));
+}
+
+function footer() {
+  const f = el('footer', {}, [
+    el('span', { text: 'Veriler Firebase (Firestore) üzerinde. Bu sayfa indirdiği kayıtları tarayıcıda saklar; Yenile sadece yenilerini indirir.' }),
+    el('button', { class: 'btn', text: 'Ham veriyi indir (JSON)', onclick: () => {
+      const blob = new Blob([JSON.stringify(docs, null, 1)], { type: 'application/json' });
+      const a = el('a', { href: URL.createObjectURL(blob), download: `top-rallisi-log-${dayKey(Date.now())}.json` });
+      document.body.append(a); a.click(); a.remove();
+    } }),
+    el('button', { class: 'btn', text: 'Önbelleği sil ve baştan indir', onclick: async () => {
+      if (!confirm('Tarayıcıdaki kopya silinip bütün kayıtlar yeniden indirilecek. Devam edilsin mi?')) return;
+      await idb.clear(); docs = []; await refresh();
+    } }),
+  ]);
+  $('#root').append(f);
+}
+
+async function boot() {
+  if (!FB.projectId) {
+    gate('Rapor henüz bir Firebase projesine bağlanmadı (FB ayarları boş).', false);
+    return;
+  }
+  gate('Yükleniyor…', false);
+  try { await loadFirebase(); } catch (e) {
+    gate('Firebase yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile.', false);
+    return;
+  }
+  docs = await idb.all();
+  footer();
+  refreshBtn.addEventListener('click', refresh);
+  $('#signout').addEventListener('click', () => fb.auth.signOut(fb.a));
+  fb.auth.getRedirectResult(fb.a).catch(() => {});
+  fb.auth.onAuthStateChanged(fb.a, async (u) => {
+    user = u;
+    $('#who').textContent = u ? u.email : '';
+    $('#signout').hidden = !u;
+    refreshBtn.hidden = !u;
+    if (!u) { gate('Oyun verilerini görmek için Google hesabınla giriş yap.'); return; }
+    render();
+    if (docs.length) setStatus(`Önceden indirilen ${fmtN(docs.length)} kayıt gösteriliyor, yenileniyor…`);
+    await refresh();
+  });
+}
+boot();
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 // Mağaza (hedef: docs/tasarim/03-gunduz-magaza-kostumler.png, 06-aksam-magaza-toplar.png)
 
+import { track } from '../../platform/analytics';
 import type { BallType } from '../../config/physics';
 import { BALLS, COSTUMES, COSTUME_CATEGORIES, CROWN_LEVELS, isSkinCategory, type CostumeCategory, type CostumeItem } from '../../config/shop';
 import { formatPoints, t } from '../../i18n';
@@ -163,6 +164,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
             d.ball = item.id;
           });
           play('buy');
+          track('buy', { item: `ball.${item.id}`, price: item.price });
           toast(app, t('toast.bought', { item: t(`ball.${item.id}`) }));
           render();
         }),
@@ -252,6 +254,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
           equip(it, it.category);
           trying = null;
           play('buy');
+          track('buy', { item: it.id, price: it.price });
           toast(app, t('toast.bought', { item: t(`costume.${it.category}.${it.key}`) }));
           render();
         }),

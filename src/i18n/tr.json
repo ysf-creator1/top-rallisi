@@ -214,6 +214,8 @@
   "settings.vibration": "Titreşim",
   "settings.vibrationNote": "iPhone tarayıcısında titreşim desteklenmez",
   "settings.sound": "Ses",
+  "settings.stats": "Anonim istatistik",
+  "settings.statsSub": "Ne zaman, ne kadar ve hangi cihazla oynandığı (ad ve IP saklanmaz)",
   "settings.saveNote": "İlerlemen bu tarayıcıda saklanır. Tarayıcı verilerini silersen ilerleme de silinir.",
   "settings.reset": "İlerlemeyi sıfırla",
   "settings.resetConfirm": "Bütün yıldızların, rekorların, puanın ve mağaza alışverişlerin silinecek. Emin misin?",

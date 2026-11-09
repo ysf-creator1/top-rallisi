@@ -15,6 +15,7 @@ import type { Quality } from '../game/render/common';
 import { GameRenderer } from '../game/render/scene';
 import { GameSession, type SessionResult } from '../game/session';
 import { t } from '../i18n';
+import { initAnalytics, track } from '../platform/analytics';
 import { play, setSoundEnabled, suspendAudio, unlockAudio } from '../platform/audio';
 import { getQueryParam, isIOS, isLandscapePhone, isStandalone, isTouchDevice, requestFullscreen } from '../platform/device';
 import { setHapticsEnabled, vibrate } from '../platform/haptics';
@@ -69,6 +70,8 @@ export class App {
   themeOverride: ThemeId | null = null;
   ghostMode = false;
   private worldShown = 1;
+  /** İstatistik için süren etap denemesi (bitince ya da bırakılınca kapanır) */
+  private run: { id: string; at: number } | null = null;
   private rotateEl: HTMLElement;
   private firstTouchDone = false;
 
@@ -103,6 +106,7 @@ export class App {
     if (th && th in THEMES) this.themeOverride = th as ThemeId;
 
     this.applySettings();
+    initAnalytics({ app: __APP_VERSION__, standalone: isStandalone(), dev: getQueryParam('dev') === '1' });
     this.dev = getQueryParam('dev') === '1' ? new DevPanel(this) : null;
     if (this.dev) root.append(this.dev.el);
 
@@ -198,6 +202,7 @@ export class App {
         if (this.fpsLowWindows >= 2) {
           this.fpsLowWindows = 0;
           const q = this.renderer.quality;
+          if (q !== 'low') track('qdown', { from: q, fps: Math.round(this.fps), lvl: this.currentLevel?.id });
           if (q === 'high') this.setQuality('medium');
           else if (q === 'medium') this.setQuality('low');
         }
@@ -220,6 +225,8 @@ export class App {
   // ---------- Ekran yönetimi ----------
 
   private mount(name: ScreenName, m: Mounted, show3D: boolean): void {
+    if (name !== 'game') this.endRun('menu');
+    if (name !== this.screen && name !== 'game') track('screen', { s: name });
     this.current?.cleanup?.();
     this.current?.el.remove();
     this.closeOverlay();
@@ -367,6 +374,7 @@ export class App {
       const ok = await this.ensureTilt();
       if (!ok) {
         this.save.update((d) => (d.settings.control = 'ropes'));
+        track('tiltDenied');
         toast(this, t('tilt.denied'));
       }
     }
@@ -406,6 +414,7 @@ export class App {
       },
     );
     this.mount('game', { el: h('div') }, true);
+    this.beginRun(level, !!ghost);
     this.hud.prepare(level, !!ghost);
     // Birinci etapta nasıl oynandığını anlat (diğer etaplarda değil)
     if (level.id === FIRST_LEVEL && !ghost) this.showTutorial();
@@ -497,7 +506,9 @@ export class App {
       void this.startLevel(this.currentLevel, { ghost, preview: this.previewMode });
       return;
     }
+    this.endRun('restart');
     this.session?.restart();
+    this.beginRun(this.currentLevel, ghost, true);
     this.hud.prepare(this.currentLevel, ghost);
     this.hud.setVisible(true);
   }
@@ -543,6 +554,20 @@ export class App {
       ball,
       maxTimeStars: assist ? ASSIST.maxTimeStars : 3,
     };
+    track('le', {
+      lvl: level.id,
+      time: Math.round(r.time * 100) / 100,
+      falls: r.falls,
+      stars: tStars,
+      coll: r.stars.filter(Boolean).length,
+      rec: isRecord,
+      first: !prev?.completed,
+      pts: earned,
+      assist,
+      dur: this.runSeconds(),
+      fps: Math.round(this.fps),
+    });
+    this.run = null;
     if (isRecord && prevBest) play('record');
     this.hud.setVisible(false);
     this.openOverlay(levelEndScreen(this, info));
@@ -553,6 +578,44 @@ export class App {
         play('record');
         showWorldUnlocked(this, w, () => this.showLevels(w));
       }, 900);
+  }
+
+  // ---------- İstatistik ----------
+
+  private beginRun(level: LevelData, ghost: boolean, restart = false): void {
+    this.endRun(restart ? 'restart' : 'switch');
+    if (this.previewMode) return;
+    const s = this.save.data.settings;
+    this.run = { id: level.id, at: performance.now() };
+    track('ls', {
+      lvl: level.id,
+      w: level.world,
+      n: levelNumber(level),
+      mode: s.control,
+      assist: s.assist,
+      ghost: ghost || undefined,
+      again: restart || undefined,
+      ball: this.save.data.ball,
+      q: this.renderer.quality,
+    });
+  }
+
+  /** Etap bitmeden bırakıldıysa kaydeder */
+  private endRun(why: string): void {
+    if (!this.run) return;
+    const sim = this.session?.sim;
+    track('lq', {
+      lvl: this.run.id,
+      why,
+      time: sim ? Math.round(sim.raceTime * 100) / 100 : undefined,
+      falls: sim?.falls,
+      dur: this.runSeconds(),
+    });
+    this.run = null;
+  }
+
+  private runSeconds(): number {
+    return this.run ? Math.round((performance.now() - this.run.at) / 100) / 10 : 0;
   }
 
   nextLevelOf(level: LevelData): LevelData | null {
