@@ -72,6 +72,8 @@ export interface SaveData {
   weekly: WeeklyState;
   /** Günün etabı ödülünün alındığı son gün */
   dailyDone: string | null;
+  /** Gizli yıldızı bulunan etaplar */
+  secrets: string[];
   flags: { a2hsShown: boolean; hintRopes: boolean; hintTilt: boolean; /** Eğim duyarlılığı varsayılanı düşüğe çekildi */ tiltLow: boolean; /** İlk açılışta kontrol seçimi (eğim / çift halat) yapıldı */ controlChosen: boolean };
 }
 
@@ -112,6 +114,7 @@ export function defaultSave(): SaveData {
     streak: defaultStreak(),
     weekly: defaultWeekly(),
     dailyDone: null,
+    secrets: [],
     flags: { a2hsShown: false, hintRopes: false, hintTilt: false, tiltLow: true, controlChosen: false },
   };
 }

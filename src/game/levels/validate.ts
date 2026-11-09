@@ -102,6 +102,12 @@ export function validateLevel(raw: unknown): ValidationResult {
     if (!main.isOnTrack(z.x, z.y)) errors.push(`branches[${bi}]: son nokta ana yolun üzerinde olmalı`);
   }
 
+  if (L.secret) {
+    if (!isNum(L.secret.x) || !isNum(L.secret.y)) errors.push('secret: x, y olmalı');
+    else if (!(L.branches ?? []).some((b) => b.hidden)) errors.push('secret: gizli yol (hidden) olmalı');
+    else if (!track.isOnTrack(L.secret.x, L.secret.y)) errors.push('secret: pistin üzerinde olmalı');
+  }
+
   const cps = L.checkpoints ?? [];
   cps.forEach((c, i) => {
     if (!isNum(c) || c <= start.y || c >= h.y) errors.push(`checkpoints[${i}]: başlangıç ile bitiş arasında olmalı`);

@@ -368,5 +368,10 @@
   "collection.balls": "Toplar",
   "collection.costumes": "Kostümler",
   "collection.shop": "Mağazaya git",
-  "collection.hint": "Puan topla, mağazadan yeni parçalar al."
+  "collection.hint": "Puan topla, mağazadan yeni parçalar al.",
+  "hud.secret": "Gizli yıldız!",
+  "toast.secret": "Gizli yıldız buldun! ({n} / {total})",
+  "end.secret": "Gizli yıldız",
+  "collection.secrets": "Gizli yıldızlar",
+  "collection.secretHint": "Bazı etaplarda çalıların altında dar bir gizli yol var. Yol kenarındaki parıltıya dikkat et!"
 }

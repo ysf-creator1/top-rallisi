@@ -36,11 +36,14 @@ export interface SessionResult {
   falls: number;
   stars: boolean[];
   ghost: GhostData;
+  /** Gizli yıldız bu denemede bulundu */
+  secret: boolean;
 }
 
 export interface SessionCallbacks {
   onStart?(): void;
   onStar?(index: number, total: number): void;
+  onSecret?(): void;
   onCheckpoint?(index: number): void;
   onFall?(cause: FallCause): void;
   onRespawn?(): void;
@@ -148,6 +151,7 @@ export class GameSession {
         n++;
       }
       if (n === 14) this.acc = 0;
+      this.renderer.levelProps?.revealSecret(this.sim.ballX, this.sim.ballY, this.time);
       if (this.ghostPlayer && this.sim.started && this.sim.phase !== 'finished') {
         this.ghostDelta = this.ghostPlayer.delta(this.sim.raceTime, this.maxHeight);
       }
@@ -240,6 +244,14 @@ export class GameSession {
           }
           this.cb.onStar?.(e.index, this.starsCollected);
           break;
+        case 'secret':
+          this.renderer.levelProps?.collectSecret(this.time);
+          if (!quiet) {
+            play('record');
+            vibrate(30);
+          }
+          this.cb.onSecret?.();
+          break;
         case 'checkpoint':
           if (!quiet) {
             play('checkpoint');
@@ -276,7 +288,7 @@ export class GameSession {
           if (!this.finished && !quiet) {
             this.finished = true;
             const ghost = this.recorder.finish(this.sim, this.opts.level.id, this.opts.ball);
-            const result: SessionResult = { time: e.time, falls: this.sim.falls, stars: [...this.sim.starsCollected], ghost };
+            const result: SessionResult = { time: e.time, falls: this.sim.falls, stars: [...this.sim.starsCollected], ghost, secret: this.sim.secretFound };
             // Delik animasyonu bitsin diye kısa gecikme
             setTimeout(() => this.cb.onFinish?.(result), 900);
           }
@@ -343,6 +355,7 @@ export class GameSession {
     this.paused = false;
     this.ropes.releaseAll();
     this.renderer.levelProps?.resetStars(this.sim.starsCollected);
+    this.renderer.levelProps?.resetSecret();
     this.renderer.follow(this.sim.ballY, 0, true);
     if (this.opts.control === 'tilt' && !this.opts.attract) {
       this.calibrating = 1.0;

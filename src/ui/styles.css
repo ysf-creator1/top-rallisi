@@ -2688,3 +2688,44 @@ body[data-theme='aksam'] .shop-preview {
 .sale-item.owned .sale-tag {
   display: none;
 }
+
+/* ---------- Gizli yıldızlar ---------- */
+.coll-secrets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+.coll-secret {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border-radius: 16px;
+  background: #fcf4dd;
+  text-align: center;
+}
+.coll-secret small {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a6420;
+  line-height: 1.1;
+}
+.coll-secret.missing {
+  background: #f6f2ec;
+}
+.coll-secret.missing small {
+  color: #a19c94;
+}
+.coll-hint {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.secret-badge {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-left: 4px;
+}

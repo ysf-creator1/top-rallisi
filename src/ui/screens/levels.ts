@@ -31,7 +31,7 @@ export function levelsScreen(app: App, world: number): HTMLElement {
       { disabled: !unlocked, onclick: () => unlocked && app.startLevel(l) },
       [
         h('div.num', [h('b', String(i + 1)), unlocked ? starsEl : svg(icons.lock(16, '#B9B4AC'))]),
-        h('div.name', l.name),
+        h('div.name', [l.name, app.save.data.secrets.includes(l.id) ? h('span.secret-badge', { title: t('collection.secrets'), html: icons.star(12) }) : null]),
         bestEl,
       ],
     );

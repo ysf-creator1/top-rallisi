@@ -1,5 +1,6 @@
 // Koleksiyon: toplanan toplar ve kostümler ("12 / 30 toplandı").
 
+import { LEVELS, levelNumber } from '../../game/levels';
 import { BALLS, COSTUMES, COSTUME_CATEGORIES, CROWN_LEVELS, type CostumeItem } from '../../config/shop';
 import { t } from '../../i18n';
 import type { App } from '../app';
@@ -17,13 +18,36 @@ function hasCostume(app: App, it: CostumeItem): boolean {
 export function collectionCount(app: App): { n: number; total: number; balls: number; costumes: number } {
   const balls = BALLS.filter((b) => app.save.data.ownedBalls.includes(b.id)).length;
   const costumes = COSTUMES.filter((c) => hasCostume(app, c)).length;
-  return { n: balls + costumes, total: BALLS.length + COSTUMES.length, balls, costumes };
+  const secretLevels = LEVELS.filter((l) => l.secret);
+  const secrets = secretLevels.filter((l) => app.save.data.secrets.includes(l.id)).length;
+  return { n: balls + costumes + secrets, total: BALLS.length + COSTUMES.length + secretLevels.length, balls, costumes };
 }
 
 function progress(n: number, total: number): HTMLElement {
   return h('div.coll-progress', [
     h('div.goal-bar', [h('i', { style: { width: `${Math.round((n / Math.max(1, total)) * 100)}%` } })]),
     h('span', t('collection.count', { n, total })),
+  ]);
+}
+
+/** Gizli yıldızlar: bulunanlar etap adıyla, bulunmayanlar sadece dünya adıyla */
+function secretCard(app: App): HTMLElement {
+  const list = LEVELS.filter((l) => l.secret);
+  const found = list.filter((l) => app.save.data.secrets.includes(l.id));
+  return h('div.card', [
+    h('div.section-title', t('collection.secrets')),
+    progress(found.length, list.length),
+    h(
+      'div.coll-secrets',
+      list.map((l) => {
+        const has = found.includes(l);
+        return h(`div.coll-secret${has ? '' : '.missing'}`, [
+          h('span', { html: icons.star(22, has) }),
+          h('small', has ? `${t(`world.short.${l.world}`)} · ${levelNumber(l)}` : t(`world.short.${l.world}`)),
+        ]);
+      }),
+    ),
+    h('p.coll-hint', t('collection.secretHint')),
   ]);
 }
 
@@ -66,6 +90,7 @@ export function collectionScreen(app: App, onBack: () => void): HTMLElement {
         h('div.title', t('collection.title')),
         h('div.stars-chip', `${c.n} / ${c.total}`),
       ]),
+      secretCard(app),
       h('div.card', [h('div.section-title', t('collection.balls')), progress(c.balls, BALLS.length), balls]),
       h('div.card', [h('div.section-title', t('collection.costumes')), progress(c.costumes, COSTUMES.length), ...cats]),
       h('p.note', t('collection.hint')),

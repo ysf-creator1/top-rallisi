@@ -165,6 +165,19 @@ export function challengeUrl(base: string, payload: string): string {
   return `${base.replace(/#.*$/, '')}#${CHALLENGE_PARAM}=${payload}`;
 }
 
+/** Kısa link: #m=<kod> (kayıt Firestore'da) */
+export const SHORT_PARAM = 'm';
+
+export function shortChallengeUrl(base: string, id: string): string {
+  return `${base.replace(/#.*$/, '')}#${SHORT_PARAM}=${id}`;
+}
+
+/** Kısa linkin kodu; yoksa null */
+export function shortIdFromHash(hash: string): string | null {
+  const m = /^#?m=([a-z0-9]{6,12})$/.exec(hash);
+  return m ? m[1] : null;
+}
+
 /** Adres çubuğundaki karma kısmından meydan okuma verisini alır */
 export function challengeFromHash(hash: string): string | null {
   const m = /^#?c=([A-Za-z0-9._-]+)$/.exec(hash);

@@ -35,6 +35,8 @@ export interface EndInfo {
   /** Meydan okumada arkadaşın süresi */
   friendTime: number | null;
   daily: boolean;
+  /** Gizli yıldız bu denemede bulundu */
+  secret: boolean;
 }
 
 const HOLE_SVG = `<svg width="140" height="104" viewBox="0 0 140 104" aria-hidden="true">
@@ -79,6 +81,7 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
   if (info.ball !== 'standard') recordRow.append(h('span.pill.info', t('end.ballUsed', { ball: t(`ball.${info.ball}`) })));
   if (info.assist) recordRow.append(h('span.pill.info', [svg(icons.assist(12)), t('levels.assisted')]));
   if (info.control === 'ropes') recordRow.append(h('span.pill.info', t('end.ropesTimes')));
+  if (info.secret) recordRow.append(h('span.pill.ok', [svg(icons.star(13)), t('end.secret')]));
   if (info.daily) recordRow.append(h('span.pill.info', [svg(icons.calendar(13)), t('title.daily')]));
   // Meydan okuma sonucu
   const friendRow =

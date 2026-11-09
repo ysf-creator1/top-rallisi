@@ -9,6 +9,8 @@ export interface RoadPoint {
 
 export interface Branch {
   type: 'short' | 'long';
+  /** Gizli yol: çalıların altında saklı, top yaklaşınca görünür */
+  hidden?: boolean;
   /** İlk ve son nokta ana yolun üzerinde olmalı (ayrılma ve birleşme yeri) */
   points: RoadPoint[];
 }
@@ -92,6 +94,8 @@ export interface LevelData {
   finishHole: { x: number; y: number; r: number };
   checkpoints?: number[];
   stars?: { x: number; y: number }[];
+  /** Gizli yoldaki gizli yıldız (koleksiyona sayılır) */
+  secret?: { x: number; y: number };
   vacuum?: VacuumZone[];
   wind?: WindZone[];
   magnets?: Magnet[];

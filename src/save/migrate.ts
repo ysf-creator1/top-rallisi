@@ -56,6 +56,7 @@ function sanitize(d: SaveData): SaveData {
       ? { week: wk.week, progress: { ...(wk.progress ?? {}) }, seen: { ...(wk.seen ?? {}) }, done: Array.isArray(wk.done) ? wk.done : [] }
       : def.weekly;
   out.dailyDone = typeof d.dailyDone === 'string' ? d.dailyDone : null;
+  out.secrets = Array.isArray(d.secrets) ? d.secrets.filter((x) => typeof x === 'string') : [];
   out.points = typeof d.points === 'number' && isFinite(d.points) ? Math.max(0, Math.round(d.points)) : 0;
   return out;
 }

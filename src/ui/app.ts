@@ -3,7 +3,8 @@
 import { ASSIST, physics, type BallType } from '../config/physics';
 import { PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, targetsFor, timeBonus, timeStars } from '../config/scoring';
 import { THEMES, themeForWorld, trackHex, type ThemeId } from '../config/theme';
-import { challengeFromHash, challengeUrl, decodeChallenge, encodeChallenge, type Challenge } from '../game/challenge';
+import { challengeFromHash, challengeUrl, decodeChallenge, encodeChallenge, shortChallengeUrl, shortIdFromHash, type Challenge } from '../game/challenge';
+import { loadChallenge, saveChallenge } from '../platform/challengeStore';
 import { parseGhost, type GhostData } from '../game/ghost';
 import { DAILY_REWARD, STREAK_GIFT_POINTS, dailyLevel, dayKey, giftBall, streakAfterPlay, weeklyAfterRun } from '../game/meta';
 import { KeyboardInput } from '../game/input/keyboard';
@@ -480,6 +481,7 @@ export class App {
       {
         onStart: () => this.hud.hideHint(),
         onCheckpoint: () => this.hud.flash(t('hud.checkpoint'), 'ok'),
+        onSecret: () => this.hud.flash(t('hud.secret'), 'ok'),
         onFall: (cause) => {
           const fromCp = !!this.session && this.session.sim.lastCheckpoint >= 0;
           if (cause === 'edge') this.hud.flash(t(fromCp ? 'hud.fell' : 'hud.fellStart'), 'warn');
@@ -632,6 +634,9 @@ export class App {
       d.points += earned;
     });
     if (isRecord) this.save.setGhost(level.id, assist, JSON.stringify(r.ghost));
+    // Gizli yıldız: etap bitince koleksiyona yazılır (bir kez)
+    const newSecret = recordable && r.secret && !this.save.data.secrets.includes(level.id);
+    if (newSecret) this.save.update((d) => d.secrets.push(level.id));
     const notes = this.previewMode ? { texts: [], gift: null } : this.applyMeta(level, { tStars, falls: r.falls, beatRecord: isRecord && !!prevBest, firstClear: recordable && !prev?.completed, earned, ghostWin: ghostTime !== null && r.time < ghostTime - 1e-6 });
 
     const info: EndInfo = {
@@ -652,6 +657,7 @@ export class App {
       ghost: r.ghost,
       friendTime: this.challenge ? this.challenge.time : null,
       daily: this.dailyRun,
+      secret: r.secret,
     };
     track('le', {
       lvl: level.id,
@@ -665,6 +671,7 @@ export class App {
       ctrl: control,
       assist,
       daily: this.dailyRun || undefined,
+      secret: r.secret || undefined,
       chal: this.challenge ? Math.round(this.challenge.time * 100) / 100 : undefined,
       dur: this.runSeconds(),
       fps: Math.round(this.fps),
@@ -680,6 +687,7 @@ export class App {
         play('record');
         showWorldUnlocked(this, w, () => this.showLevels(w));
       }, 900);
+    if (newSecret) notes.texts.unshift(t('toast.secret', { n: this.save.data.secrets.length, total: LEVELS.filter((l) => l.secret).length }));
     // Günün etabı, görev ve seri bildirimleri sırayla
     notes.texts.forEach((txt, i) => setTimeout(() => toast(this, txt, undefined, 3200), 1500 + i * 1100));
     const gift = notes.gift;
@@ -745,7 +753,9 @@ export class App {
   /** Bitirilen denemenin paylaşılacak linki */
   async challengeLink(info: EndInfo): Promise<string> {
     const payload = await encodeChallenge({ ghost: info.ghost, assist: info.assist, control: info.control });
-    return challengeUrl(appBaseUrl(), payload);
+    // Kısa link: kayıt Firestore'a yazılır; yazılamazsa her şey linkin içinde (uzun link)
+    const id = await saveChallenge(payload);
+    return id ? shortChallengeUrl(appBaseUrl(), id) : challengeUrl(appBaseUrl(), payload);
   }
 
   async shareChallenge(info: EndInfo, url: string): Promise<void> {
@@ -761,10 +771,13 @@ export class App {
 
   /** Adresteki meydan okuma linkini okur */
   private async checkChallengeLink(): Promise<void> {
-    const payload = challengeFromHash(readHash());
-    if (!payload) return;
+    const hash = readHash();
+    const shortId = shortIdFromHash(hash);
+    const inline = challengeFromHash(hash);
+    if (!shortId && !inline) return;
     clearHash();
-    const c = await decodeChallenge(payload, (id) => !!getLevel(id));
+    const payload = shortId ? await loadChallenge(shortId) : inline;
+    const c = payload ? await decodeChallenge(payload, (id) => !!getLevel(id)) : null;
     track('chOpen', { ok: !!c, lvl: c?.levelId });
     if (!c) {
       toast(this, t('challenge.bad'));

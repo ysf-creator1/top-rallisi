@@ -12,6 +12,7 @@ export type SimPhase = 'playing' | 'falling' | 'finishing' | 'finished';
 export type SimEvent =
   | { type: 'start' }
   | { type: 'star'; index: number }
+  | { type: 'secret' }
   | { type: 'checkpoint'; index: number }
   | { type: 'fall'; cause: FallCause }
   | { type: 'respawn' }
@@ -102,6 +103,8 @@ export class Simulation {
   fallInfo: { cause: FallCause; x: number; y: number; dx: number; dy: number } = { cause: 'edge', x: 0, y: 0, dx: 0, dy: 0 };
   private prevBallY = -Infinity;
   readonly starsCollected: boolean[];
+  /** Gizli yıldız bu denemede bulundu */
+  secretFound = false;
   events: SimEvent[] = [];
 
   private readonly frame: BarFrame = { length: 1, theta: 0, cos: 1, sin: 0 };
@@ -424,6 +427,13 @@ export class Simulation {
         this.starsCollected[i] = true;
         this.events.push({ type: 'star', index: i });
       }
+    }
+
+    // Gizli yoldaki gizli yıldız
+    const sec = L.secret;
+    if (sec && !this.secretFound && Math.hypot(bx - sec.x, by - sec.y) < pr) {
+      this.secretFound = true;
+      this.events.push({ type: 'secret' });
     }
 
     // Bitiş deliği (tarif 3.4)

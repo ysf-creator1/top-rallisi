@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { Autopilot } from '../src/game/autopilot';
-import { challengeFromHash, challengeUrl, decodeChallenge, encodeChallenge, packFrames, unpackFrames } from '../src/game/challenge';
+import { Autopilot, DEFAULT_AUTOPILOT } from '../src/game/autopilot';
+import { challengeFromHash, challengeUrl, decodeChallenge, encodeChallenge, packFrames, shortChallengeUrl, shortIdFromHash, unpackFrames } from '../src/game/challenge';
 import { GhostRecorder, decodeFrames } from '../src/game/ghost';
 import { LEVELS } from '../src/game/levels';
 import {
@@ -201,5 +201,33 @@ describe('meydan okuma linki', () => {
     expect(await decodeChallenge('1.yok.100.standard.0.AAAA', () => false)).toBeNull();
     expect(await decodeChallenge('1.w1-04.100.altin.0.AAAA', () => true)).toBeNull();
     expect(challengeFromHash('#baska')).toBeNull();
+    expect(shortIdFromHash('#m=ab23cd9k')).toBe('ab23cd9k');
+    expect(shortIdFromHash('#m=AB')).toBeNull();
+    expect(shortChallengeUrl('https://x.github.io/top-rallisi/#eski', 'ab23cd9k')).toBe('https://x.github.io/top-rallisi/#m=ab23cd9k');
+  });
+});
+
+describe('gizli yollar', () => {
+  const secretLevels = LEVELS.filter((l) => l.secret);
+  test('her dünyada bir gizli yol var', () => {
+    expect(secretLevels.map((l) => l.world).sort()).toEqual([1, 2, 3, 4, 5, 6]);
+    for (const l of secretLevels) expect(l.branches?.some((b) => b.hidden)).toBe(true);
+  });
+
+  test.each(secretLevels.map((l) => [l.id, l] as const))('%s: kısayoldan giden gizli yıldızı bulur, ana yoldan giden bulmaz', (_id, level) => {
+    const run = (preferShort: boolean) => {
+      const sim = new Simulation(level, { ball: 'standard', assist: false });
+      const ap = new Autopilot({ ...DEFAULT_AUTOPILOT, preferShort });
+      for (let i = 0; i < 120 * 240 && sim.phase !== 'finished'; i++) {
+        ap.control(sim);
+        sim.step();
+        sim.drainEvents();
+      }
+      return sim;
+    };
+    const short = run(true);
+    expect(short.phase).toBe('finished');
+    expect(short.secretFound).toBe(true);
+    expect(run(false).secretFound).toBe(false);
   });
 });

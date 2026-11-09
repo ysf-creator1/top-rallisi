@@ -6,7 +6,7 @@ import { t } from '../../i18n';
 import { magnetActive } from '../physics/sim';
 import { ARM_HALF, ARM_HUB_R, POPPER_VIS, armAngle, popperState, type PopperState } from '../physics/obstacles';
 import type { LevelData } from '../levels/types';
-import type { Track } from '../physics/track';
+import { Track } from '../physics/track';
 import { S, canvasTexture, makeCanvas, matte, starShape } from './common';
 
 const W2 = 500;
@@ -64,9 +64,21 @@ function popperTexture(): THREE.CanvasTexture {
   return canvasTexture(c);
 }
 
+/** Gizli yol: üstünü örten çalılar, girişte parıltı ve içinde gizli yıldız */
+interface SecretProp {
+  bushes: { mesh: THREE.Group; home: THREE.Vector3; away: THREE.Vector3 }[];
+  sparkle: THREE.Mesh;
+  star: StarProp;
+  /** Çalıların açıldığı an (-1: kapalı) */
+  openedAt: number;
+  /** Açılma mesafesi için gizli yolun örnek noktaları (etap birimi) */
+  path: { x: number; y: number }[];
+}
+
 export class Props {
   readonly group = new THREE.Group();
   private stars: StarProp[] = [];
+  private secret: SecretProp | null = null;
   private anims: Anim[] = [];
   private holeFlag: THREE.Group;
   private cpFlags: THREE.Group[] = [];
@@ -126,6 +138,10 @@ export class Props {
       this.group.add(g);
       this.stars.push({ group: g, star, disc, collectedAt: -1, baseY: s.y * S });
     }
+
+    // Gizli yol ve gizli yıldız
+    const hb = (L.branches ?? []).find((b) => b.hidden);
+    if (hb && L.secret) this.secret = this.buildSecret(L, track, hb.points, starGeo, starMat, discGeo);
 
     // Vakum: içe doğru akan parıltılı halkalar
     for (const v of L.vacuum ?? []) {
@@ -414,6 +430,138 @@ export class Props {
     for (const s of L.signs ?? []) this.group.add(sign(t(s.text), s.text === 'sign.short', lx(s.x), s.y * S));
   }
 
+  private buildSecret(
+    L: LevelData,
+    track: Track,
+    pts: { x: number; y: number; w: number }[],
+    starGeo: THREE.BufferGeometry,
+    starMat: THREE.MeshStandardMaterial,
+    discGeo: THREE.BufferGeometry,
+  ): SecretProp {
+    // Yolu eşit aralıklı noktalara böl
+    const path: { x: number; y: number }[] = [];
+    for (let k = 0; k < pts.length - 1; k++) {
+      const a = pts[k], b = pts[k + 1];
+      const n = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 20));
+      for (let i = 0; i < n; i++) path.push({ x: a.x + ((b.x - a.x) * i) / n, y: a.y + ((b.y - a.y) * i) / n });
+    }
+    path.push(pts[pts.length - 1]);
+    const main = new Track({ ...L, branches: [] });
+    const near = { dist: 0, halfWidth: 0, cx: 0, cy: 0, line: main.main };
+    void track;
+    // Çalılar: ana yolun dışında kalan kısmı örter (ana yol kenarında küçük bir boşluk kalır: ipucu)
+    const greens = ['#7FB98F', '#8CCFA0', '#76B387'];
+    const leaf = greens.map((c) => matte(c, { roughness: 0.95 }));
+    const ball = new THREE.SphereGeometry(1, 16, 12);
+    const bushes: SecretProp['bushes'] = [];
+    const w = pts[0].w;
+    let k = 0;
+    for (let i = 0; i < path.length; i += 3) {
+      const p = path[i];
+      main.nearest(p.x, p.y, near);
+      if (near.dist < near.halfWidth + w * 0.35) continue;
+      const g = new THREE.Group();
+      const r = w * 0.62 * S;
+      for (let q = 0; q < 3; q++) {
+        const m = new THREE.Mesh(ball, leaf[(k + q) % 3]);
+        const ang = (q / 3) * Math.PI * 2 + k;
+        m.position.set(Math.cos(ang) * r * 0.45, Math.sin(ang) * r * 0.45, r * 0.35);
+        m.scale.set(r * (0.75 + 0.1 * q), r * (0.75 + 0.1 * q), r * 0.62);
+        m.castShadow = true;
+        g.add(m);
+      }
+      const home = new THREE.Vector3(lx(p.x), p.y * S, 0.02);
+      // Açılınca yolun iki yanına çekilir
+      const prev = path[Math.max(0, i - 1)], next = path[Math.min(path.length - 1, i + 1)];
+      const dx = next.x - prev.x, dy = next.y - prev.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const side = k % 2 ? 1 : -1;
+      const away = home.clone().add(new THREE.Vector3((-dy / len) * side * w * 1.1 * S, (dx / len) * side * w * 1.1 * S, -0.05));
+      g.position.copy(home);
+      this.group.add(g);
+      bushes.push({ mesh: g, home, away });
+      k++;
+    }
+    // Gizli yıldız
+    const sg = new THREE.Group();
+    sg.position.set(lx(L.secret!.x), L.secret!.y * S, 0.05);
+    const disc = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: '#FFF1C9', transparent: true, opacity: 0.4, depthWrite: false }));
+    const star = new THREE.Mesh(starGeo, starMat.clone());
+    star.position.z = 0.22;
+    sg.add(disc, star);
+    this.group.add(sg);
+    // Girişteki parıltı: ana yol kenarında, çalıların başında yanıp söner
+    const first = bushes[0]?.home ?? sg.position;
+    const sparkle = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.34, 0.34),
+      new THREE.MeshBasicMaterial({ map: sparkleTexture(), transparent: true, depthWrite: false }),
+    );
+    sparkle.position.set(first.x, first.y, 0.75);
+    this.group.add(sparkle);
+    return { bushes, sparkle, star: { group: sg, star, disc, collectedAt: -1, baseY: L.secret!.y * S }, openedAt: -1, path };
+  }
+
+  /** Top gizli yola yaklaşınca çalılar açılır (etap birimiyle top konumu) */
+  revealSecret(bx: number, by: number, time: number): void {
+    const s = this.secret;
+    if (!s || s.openedAt >= 0) return;
+    for (let i = 0; i < s.path.length; i += 2) {
+      const p = s.path[i];
+      if (Math.hypot(bx - p.x, by - p.y) < 230) {
+        s.openedAt = time;
+        return;
+      }
+    }
+  }
+
+  collectSecret(time: number): void {
+    const s = this.secret;
+    if (s && s.star.collectedAt < 0) s.star.collectedAt = time;
+    if (s && s.openedAt < 0) s.openedAt = time;
+  }
+
+  /** Yeniden başlarken çalılar kapanır, yıldız geri gelir */
+  resetSecret(): void {
+    const s = this.secret;
+    if (!s) return;
+    s.openedAt = -1;
+    s.star.collectedAt = -1;
+    s.star.group.visible = true;
+    s.star.group.scale.setScalar(1);
+    s.star.group.position.z = 0.05;
+    for (const b of s.bushes) {
+      b.mesh.position.copy(b.home);
+      b.mesh.scale.setScalar(1);
+      b.mesh.visible = true;
+    }
+  }
+
+  private updateSecret(time: number): void {
+    const s = this.secret;
+    if (!s) return;
+    const p = s.openedAt < 0 ? 0 : Math.min(1, (time - s.openedAt) / 0.6);
+    const e = 1 - Math.pow(1 - p, 3);
+    for (const b of s.bushes) {
+      b.mesh.position.lerpVectors(b.home, b.away, e);
+      b.mesh.scale.setScalar(1 - 0.45 * e);
+    }
+    const sp = s.sparkle.material as THREE.MeshBasicMaterial;
+    sp.opacity = p > 0 ? Math.max(0, 1 - p * 2) : 0.35 + 0.65 * Math.max(0, Math.sin(time * 3.2));
+    s.sparkle.rotation.z = time * 0.8;
+    const st = s.star;
+    if (st.collectedAt === -2) return;
+    if (st.collectedAt >= 0) {
+      const q = (time - st.collectedAt) / 0.45;
+      if (q >= 1) {
+        st.group.visible = false;
+        st.collectedAt = -2;
+        return;
+      }
+      st.group.scale.setScalar(1 + q * 0.8);
+      st.group.position.z = 0.05 + q * 0.6;
+    } else st.star.rotation.y = Math.sin(time * 1.6) * 0.5;
+  }
+
   /** Yıldız toplandı animasyonu başlatır */
   collectStar(i: number, time: number): void {
     const s = this.stars[i];
@@ -431,6 +579,7 @@ export class Props {
 
   update(time: number, obs = time): void {
     for (const a of this.anims) a.update(time, obs);
+    this.updateSecret(time);
     for (const s of this.stars) {
       if (s.collectedAt === -2) continue;
       if (s.collectedAt >= 0) {
@@ -458,6 +607,31 @@ export class Props {
       if (c) c.rotation.y = -sway;
     }
   }
+}
+
+/** Dört köşeli parıltı dokusu */
+function sparkleTexture(): THREE.Texture {
+  const c = makeCanvas(128, 128);
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 60);
+  g.addColorStop(0, 'rgba(255,246,214,1)');
+  g.addColorStop(0.35, 'rgba(255,236,170,0.55)');
+  g.addColorStop(1, 'rgba(255,236,170,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillStyle = '#FFFBEA';
+  ctx.beginPath();
+  ctx.moveTo(64, 4);
+  ctx.lineTo(72, 56);
+  ctx.lineTo(124, 64);
+  ctx.lineTo(72, 72);
+  ctx.lineTo(64, 124);
+  ctx.lineTo(56, 72);
+  ctx.lineTo(4, 64);
+  ctx.lineTo(56, 56);
+  ctx.closePath();
+  ctx.fill();
+  return canvasTexture(c);
 }
 
 function sign(text: string, short: boolean, x: number, y: number): THREE.Group {
