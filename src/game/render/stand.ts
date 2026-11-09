@@ -162,6 +162,12 @@ export class BarView {
     }
   }
 
+  /** Hayalet çubuğun saydamlığı (koç gösterisinde daha belirgin) */
+  setOpacity(o: number): void {
+    const m = this.mesh.material as THREE.MeshStandardMaterial;
+    if (m.transparent && m.opacity !== o) m.opacity = o;
+  }
+
   /** Çubuk ipleri stand grubuna eklenmeli */
   get stringMeshes(): THREE.Mesh[] {
     return this.strings;

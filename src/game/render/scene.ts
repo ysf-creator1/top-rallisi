@@ -48,7 +48,8 @@ export interface RenderState {
   fall?: { t: number; dir: number; cause?: FallCause; x?: number; y?: number; dx?: number; dy?: number } | null;
   /** Yeniden doğma: 0→1 (1 = bitti) */
   spawn?: number;
-  ghost: { yL: number; yR: number; x: number; y: number; scale: number } | null;
+  /** strong: halat koçunun gösterisi (daha belirgin çizilir) */
+  ghost: { yL: number; yR: number; x: number; y: number; scale: number; strong?: boolean } | null;
   ropes: [RopeVisual, RopeVisual];
   time: number;
   /** Engel saati (fizikle aynı; dönen kol ve fırlatıcı buna göre çizilir) */
@@ -63,7 +64,12 @@ export interface LevelVisualOptions {
   ball: BallType;
   costume: Costume;
   ghost: boolean;
+  /** Halat koçu: hayalet çubuk ve top gösteri için de gerekir */
+  coach?: boolean;
 }
+
+/** Halat düğümlerinin dinlenme yeri: ekran yüksekliğinin oranı (sol, sağ) */
+const KNOT_REST: [number, number] = [0.72, 0.79];
 
 const QUALITY_SETTINGS: Record<Quality, { dpr: number; shadow: number }> = {
   high: { dpr: 2, shadow: 2048 },
@@ -210,7 +216,7 @@ export class GameRenderer {
 
     this.setBall(o.ball, o.costume);
 
-    if (o.ghost) {
+    if (o.ghost || o.coach) {
       this.ghostBar = new BarView(L.boardWidth, null, true);
       this.levelGroup.add(this.ghostBar.group);
       this.ghostBall = new BallView({ type: o.ball, ghost: true, radius: physics.ballRadius * S });
@@ -393,6 +399,11 @@ export class GameRenderer {
     return this.ropeScreenX;
   }
 
+  /** Halat düğümlerinin dinlenme yeri (ekran y, px) */
+  get ropeKnotRest(): [number, number] {
+    return [this.height * KNOT_REST[0], this.height * KNOT_REST[1]];
+  }
+
   /** Bir ekran pikseli kaç dünya birimi (halat düzleminde) */
   get unitsPerPixel(): number {
     return this.viewH / this.height;
@@ -451,6 +462,7 @@ export class GameRenderer {
     if (st.ghost && this.ghostBar && this.ghostBall) {
       this.ghostBar.group.visible = this.ghostBall.root.visible = true;
       this.ghostBar.update(st.ghost.yL, st.ghost.yR);
+      this.ghostBar.setOpacity(st.ghost.strong ? 0.75 : 0.35);
       this.ghostBar.group.position.z = BAR_Z - 0.02;
       this.ghostBall.update((st.ghost.x - 500) * S, st.ghost.y * S, BAR_Z - 0.02, 0, st.ghost.scale, st.time);
     } else if (this.ghostBar && this.ghostBall) {
@@ -484,8 +496,7 @@ export class GameRenderer {
       const wp = new THREE.Vector3(x, this.focusY, z).applyMatrix4(this.standGroup.matrixWorld).project(this.camera);
       this.ropeScreenX[i] = ((wp.x + 1) / 2) * this.width;
       // Düğüm: ekranın alt kısmında, tutunca parmakla birlikte kayar
-      const restFrac = i === 0 ? 0.72 : 0.79;
-      const knotPx = Math.min(this.height - 40, Math.max(this.height * 0.3, this.height * restFrac + rv.offsetPx));
+      const knotPx = Math.min(this.height - 40, Math.max(this.height * 0.3, this.height * KNOT_REST[i] + rv.offsetPx));
       this.screenToStand(this.ropeScreenX[i], knotPx, z, v);
       const knotY = v.y;
       let gripY: number | null = null;

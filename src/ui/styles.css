@@ -144,6 +144,13 @@ button:focus-visible {
   inset: 0;
   touch-action: none;
 }
+/* Uzun basınca büyüteç, seçim ve menü çıkmasın (iOS ve Android) */
+.stage,
+.stage * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 
 /* ---------- Ortak parçalar ---------- */
 .glass {
@@ -635,6 +642,73 @@ body[data-theme='aksam'] .screen {
   max-width: calc(100% - 32px);
   transition: opacity 300ms;
   pointer-events: none;
+}
+/* ---------- Halat koçu (ilk etaplarda el animasyonu) ---------- */
+.coach {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.coach.hidden {
+  display: none;
+}
+.coach-grip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform, opacity;
+}
+.coach-hand {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  filter: drop-shadow(0 6px 8px rgba(59, 63, 69, 0.28));
+}
+.coach-hand svg {
+  display: block;
+}
+.coach-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 253, 248, 0.95);
+  background: rgba(255, 253, 248, 0.28);
+  box-shadow: 0 0 0 2px rgba(59, 63, 69, 0.18);
+}
+.coach-arrow {
+  position: absolute;
+  left: 36px;
+  top: 6px;
+  transition: opacity 160ms;
+  filter: drop-shadow(0 3px 4px rgba(59, 63, 69, 0.25));
+}
+.coach-grip.right .coach-arrow {
+  left: -56px;
+}
+.coach-arrow.up svg {
+  transform: rotate(180deg);
+}
+.coach-cap {
+  position: absolute;
+  left: 50%;
+  top: calc(118px + var(--safe-top));
+  transform: translateX(-50%);
+  width: max-content;
+  text-align: center;
+  padding: 12px 18px;
+  border-radius: 22px;
+  font-size: 15px;
+  font-weight: 800;
+  max-width: calc(100% - 32px);
+  transition: opacity 200ms;
+}
+.hud.coach-on .hint {
+  visibility: hidden;
 }
 .tilt-card {
   position: absolute;

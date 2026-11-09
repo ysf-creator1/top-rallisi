@@ -19,6 +19,10 @@ export interface RopeInputOptions {
 }
 
 const STRIP = 64;
+
+function blockTouch(e: TouchEvent): void {
+  if (e.cancelable) e.preventDefault();
+}
 const NEAR = 52;
 
 export class RopeInput {
@@ -40,6 +44,9 @@ export class RopeInput {
     el.addEventListener('pointerup', this.onUp);
     el.addEventListener('pointercancel', this.onUp);
     el.addEventListener('lostpointercapture', this.onUp);
+    // iOS: uzun basınca çıkan yuvarlak büyüteç ve seçim, sadece touchstart engellenince kalkar
+    el.addEventListener('touchstart', blockTouch, { passive: false });
+    el.addEventListener('touchmove', blockTouch, { passive: false });
   }
 
   detach(): void {
@@ -50,6 +57,8 @@ export class RopeInput {
     el.removeEventListener('pointerup', this.onUp);
     el.removeEventListener('pointercancel', this.onUp);
     el.removeEventListener('lostpointercapture', this.onUp);
+    el.removeEventListener('touchstart', blockTouch);
+    el.removeEventListener('touchmove', blockTouch);
     this.el = null;
   }
 

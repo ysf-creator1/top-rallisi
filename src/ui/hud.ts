@@ -124,6 +124,11 @@ export class Hud {
     this.applySide();
   }
 
+  /** Halat koçu görünürken üstteki sabit ipucu yazısı gizlenir (koçun kendi yazısı var) */
+  setCoach(on: boolean): void {
+    this.el.classList.toggle('coach-on', on);
+  }
+
   hideHint(): void {
     this.hint.style.opacity = '0';
     this.tiltCard.style.opacity = '0.0';

@@ -1,6 +1,6 @@
 // Uygulama: ekranlar, oyun akışı, kayıt ve ödüller.
 
-import { ASSIST, type BallType } from '../config/physics';
+import { ASSIST, physics, type BallType } from '../config/physics';
 import { PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, timeBonus, timeStars } from '../config/scoring';
 import { THEMES, themeForWorld, trackHex, type ThemeId } from '../config/theme';
 import { parseGhost, type GhostData } from '../game/ghost';
@@ -23,6 +23,7 @@ import { requestTilt, startTilt, tiltAvailable } from '../platform/tilt';
 import { SaveStore } from '../save/save';
 import type { LevelRecord, RunRecord } from '../save/schema';
 import { h } from './dom';
+import { RopeCoach } from './coach';
 import { Hud } from './hud';
 import { showA2hs, showConfirm, showTiltPermission, showWorldUnlocked } from './screens/dialogs';
 import { DevPanel } from './screens/dev';
@@ -55,6 +56,8 @@ export class App {
   readonly ropes: RopeInput;
   readonly keys = new KeyboardInput();
   readonly hud: Hud;
+  /** İlk etaplarda halatı nasıl çekeceğini gösteren el */
+  readonly coach = new RopeCoach();
   readonly dev: DevPanel | null;
   session: GameSession | null = null;
   screen: ScreenName = 'title';
@@ -94,13 +97,14 @@ export class App {
       enabled: () => (this.session && this.screen === 'game' && !this.session.paused ? this.session.ropesEnabled : [false, false]),
       ropeX: () => this.renderer.ropeScreenPositions,
       onGrab: () => {
+        this.coach.finish();
         vibrate(8);
         play('grab');
       },
     });
     this.ropes.attach(inputLayer);
     this.hud = new Hud(this);
-    this.stage.append(this.hud.el);
+    this.stage.append(this.coach.el, this.hud.el);
 
     const th = getQueryParam('theme');
     if (th && th in THEMES) this.themeOverride = th as ThemeId;
@@ -121,6 +125,10 @@ export class App {
     // Çift dokunmayla yakınlaştırma ve uzun basma menüsü olmasın
     document.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('selectstart', (e) => {
+      const el = e.target as HTMLElement | null;
+      if (!el?.closest?.('input, textarea, [contenteditable], .dev-panel')) e.preventDefault();
+    });
     window.addEventListener(
       'pointerdown',
       () => {
@@ -180,6 +188,7 @@ export class App {
     const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
     if (this.render3D && this.session) {
+      this.updateCoach(dt);
       this.session.frame(dt);
       this.renderer.render();
       this.hud.update();
@@ -188,6 +197,27 @@ export class App {
     this.dev?.update(dt);
     requestAnimationFrame(this.loop);
   };
+
+  /** Halat koçu: oyuncu halata dokunana ya da çubuk oynayana kadar el gösterir */
+  private updateCoach(dt: number): void {
+    const s = this.session!;
+    if (!this.coach.active || this.screen !== 'game' || s.opts.attract) {
+      s.demo = null;
+      this.hud.setCoach(false);
+      return;
+    }
+    if (s.sim.started || this.ropes.grips[0] || this.ropes.grips[1]) this.coach.finish();
+    s.demo = this.coach.update(dt, {
+      running: !s.paused && !s.introActive && s.sim.phase === 'playing',
+      enabled: s.ropesEnabled,
+      tilt: s.opts.control === 'tilt',
+      ropeX: this.renderer.ropeScreenPositions,
+      knotY: this.renderer.ropeKnotRest,
+      height: window.innerHeight,
+      unitsPerPx: physics.ropeSensitivity * (0.5 + s.opts.sensitivity),
+    });
+    this.hud.setCoach(this.coach.active);
+  }
 
   private measureFps(dt: number): void {
     this.fpsAcc += dt;
@@ -225,6 +255,7 @@ export class App {
   // ---------- Ekran yönetimi ----------
 
   private mount(name: ScreenName, m: Mounted, show3D: boolean): void {
+    if (name !== 'game') this.coach.arm(false);
     if (name !== 'game') this.endRun('menu');
     if (name !== this.screen && name !== 'game') track('screen', { s: name });
     this.current?.cleanup?.();
@@ -383,6 +414,7 @@ export class App {
     const assist = s.assist;
     const ghost = opts.ghost ? this.ghostFor(level.id, assist) : null;
     this.ghostMode = !!ghost;
+    this.coach.arm(coachLevel(level) && !ghost);
     this.loadLevelVisuals(level, !!ghost);
     this.session = new GameSession(
       {
@@ -451,6 +483,7 @@ export class App {
       ball: this.save.data.ball,
       costume: this.save.data.costume,
       ghost,
+      coach: !ghost && coachLevel(level),
     });
     this.renderer.levelProps?.resetStars((level.stars ?? []).map(() => false));
   }
@@ -507,6 +540,7 @@ export class App {
       return;
     }
     this.endRun('restart');
+    this.coach.arm(coachLevel(this.currentLevel) && !ghost);
     this.session?.restart();
     this.beginRun(this.currentLevel, ghost, true);
     this.hud.prepare(this.currentLevel, ghost);
@@ -642,6 +676,15 @@ export class App {
 /** Bu etap bir engel türünün ilk göründüğü etapsa o engelin ipucu anahtarı */
 /** Bu kadar düşüşten sonra yardım modu önerilir */
 const ASSIST_TIP_FALLS = 5;
+
+/** Halat koçunun çıktığı etaplar: birinci dünyanın ilk üç etabı */
+const COACH_LEVELS = 3;
+
+function coachLevel(level: LevelData): boolean {
+  return levelsOfWorld(1)
+    .slice(0, COACH_LEVELS)
+    .some((l) => l.id === level.id);
+}
 
 function obstacleHint(level: LevelData): string | null {
   const kinds = [

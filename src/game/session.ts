@@ -12,6 +12,7 @@ import type { RopeInput } from './input/ropes';
 import type { LevelData } from './levels/types';
 import type { FallCause } from './physics/obstacles';
 import { obstacleTime } from './physics/obstacles';
+import { ballCenter } from './physics/bar';
 import { FALL_DURATION, Simulation, type SimEvent } from './physics/sim';
 import type { GameRenderer, RenderState } from './render/scene';
 
@@ -70,6 +71,11 @@ export class GameSession {
   private finished = false;
   private kbTilt = 0;
   ghostDelta: number | null = null;
+  /**
+   * Halat koçunun gösterisi (ilk etaplar): halat düğümlerinin kayması (px),
+   * uçların hayalet yükselişi ve hayalet topun kayması (birim). Fiziği etkilemez.
+   */
+  demo: { pull: [number, number]; lift: [number, number]; slide: number; ghost: boolean } | null = null;
   /** Kalibrasyon süresi (eğim modunda başta) */
   calibrating = 0;
   private calibSum = 0;
@@ -96,6 +102,11 @@ export class GameSession {
     if (opts.control === 'tilt' && !opts.attract) this.calibrating = 1.0;
     renderer.follow(this.sim.ballY, 0, true);
     if (!opts.attract) this.intro = INTRO_HOLD + INTRO_PAN;
+  }
+
+  /** Etap başındaki kamera turu sürüyor mu */
+  get introActive(): boolean {
+    return this.intro > 0 && !this.sim.started;
   }
 
   get raceTime(): number {
@@ -275,13 +286,29 @@ export class GameSession {
       const f = this.ghostPlayer.sample(sim.started ? sim.raceTime : 0, this.ghostFrame);
       const c = this.ghostPlayer.ballAt(f);
       ghost = { yL: f.yL, yR: f.yR, x: c.x, y: c.y, scale: f.scale };
+    } else if (this.demo?.ghost && sim.phase === 'playing') {
+      const d = this.demo;
+      let yL = sim.yL + d.lift[0];
+      let yR = sim.yR + d.lift[1];
+      // Eğim sınırı aşılmasın (fizikteki gibi)
+      const md = sim.maxDiff * 0.9;
+      const diff = yR - yL;
+      if (Math.abs(diff) > md) {
+        const ex = diff - Math.sign(diff) * md;
+        if (d.lift[0] >= d.lift[1]) yL += ex;
+        else yR -= ex;
+      }
+      const u = Math.max(sim.width * 0.12, Math.min(sim.width * 0.88, sim.u + d.slide));
+      const c = ballCenter(yL, yR, u, sim.width, sim.depth, physics.ballRadius);
+      ghost = { yL, yR, x: c.x, y: c.y, scale: 1, strong: true };
     }
+    const demoPull = this.demo?.pull ?? [0, 0];
     const en = this.ropesEnabled;
     const rope = (i: 0 | 1) => ({
       visible: en[i],
       gripPx: this.ropes.grips[i]?.y ?? null,
-      offsetPx: this.ropes.offset[i] + (this.opts.attract ? Math.sin(this.time * 1.3 + i) * 8 : 0),
-      scroll: this.ropes.scroll[i] + (this.opts.attract ? (i === 0 ? this.sim.yL : this.sim.yR) * 0.3 : 0),
+      offsetPx: this.ropes.offset[i] + demoPull[i] + (this.opts.attract ? Math.sin(this.time * 1.3 + i) * 8 : 0),
+      scroll: this.ropes.scroll[i] + demoPull[i] + (this.opts.attract ? (i === 0 ? this.sim.yL : this.sim.yR) * 0.3 : 0),
     });
     return {
       yL: sim.yL,
