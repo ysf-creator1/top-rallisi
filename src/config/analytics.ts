@@ -4,8 +4,8 @@
 // projectId boşsa istatistik gönderilmez.
 
 export const ANALYTICS = {
-  projectId: '',
-  apiKey: '',
+  projectId: 'top-rallisi-log',
+  apiKey: 'AIzaSyAm7tUtkMQq2fDYQQD9iwihDCQWxT0hdog',
   /** Olayların yazıldığı koleksiyon */
   collection: 'logs',
   /** Biriken olaylar bu sıklıkla gönderilir (ms) */
