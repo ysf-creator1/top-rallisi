@@ -7,6 +7,7 @@ Bu klasör, Top Rallisi oyununu Claude Code'a yaptırmak ve GitHub Pages'te ücr
 - `docs/TOP_RALLISI_TARIF.md`: oyunun tam tarifi
 - `docs/TASARIM_REHBERI.md`: renkler, yazı tipleri, görsel kurallar
 - `docs/tasarim/`: hedef ekran görüntüleri (8 adet) ve HTML kaynakları
+- `RAPOR.md`: oyun raporu (kim, ne zaman, ne kadar oynadı). Raporu açmak için `Top Rallisi Raporu.webloc` dosyasına çift tıkla.
 
 ## Hazırlık (bir kez)
 1. Bilgisayarında **Node.js 20 veya üstü** ve **Git** kurulu olmalı. Terminalde `node -v` ve `git --version` ile kontrol edebilirsin.

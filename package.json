@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "levels": "tsx scripts/generate-levels.ts"
+    "levels": "tsx scripts/generate-levels.ts",
+    "rapor": "open https://ysf-creator1.github.io/top-rallisi/rapor.html"
   },
   "dependencies": {
     "@fontsource/fredoka": "^5.3.0",

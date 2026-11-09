@@ -25,7 +25,7 @@ Tarif ile bu dosya çelişirse tarif geçerlidir. Tarifte olmayan bir karar gere
 - Sunucu yok. Kayıt `localStorage` üzerinde, `src/save/` katmanında, sürüm numaralı.
 - Tarayıcıya özel API'ler (titreşim, eğim, kayıt, tam ekran) sadece `src/platform/` içinde; oyun kodu bunları doğrudan çağırmaz (ileride Capacitor'a geçiş için).
 - Yazı tipleri `@fontsource/*` ile gömülür. PWA için `vite-plugin-pwa`.
-- Reklam, analitik, takip betiği, dış CDN yok; her şey pakete dahil.
+- Reklam, takip betiği, dış CDN yok; her şey pakete dahil. **İstisna (kullanıcının isteği, 2026-11-09):** kendi anonim oyun istatistiklerimiz Firestore'a yazılır ve `public/rapor.html` raporunda gösterilir. Ayrıntılar `RAPOR.md` dosyasında.
 
 ## Yayın (GitHub Pages)
 - `vite.config.ts` içinde `base: '/top-rallisi/'` (depo adı farklıysa ona göre).
