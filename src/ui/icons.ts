@@ -55,6 +55,15 @@ export const icons = {
   assist: (size = 12) => line('<path d="M12 3.5l7 3v5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9v-5z"/>', size),
   arrowLeft: (size = 14) => line('<path d="M19 12H5M10 7l-5 5 5 5"/>', size),
   arrowRight: (size = 14) => line('<path d="M5 12h14M14 7l5 5-5 5"/>', size),
+  /** Gün serisi: renkli alev */
+  flame: (size = 18, on = true) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.6 3.3 4.1 5 5.6 8.3 1.9 4.3-.9 10.2-5.6 10.2S4.5 17.6 6 13.2c.8-2.3 2.4-3.2 2.8-5.6 1.6 1.2 2 2.6 2 4 1.6-2 1.9-5.4 1.2-9.1z" fill="${on ? '#F2A65A' : '#D9D3CA'}"/><path d="M12 12.2c.4 1.8 2.6 2.6 2.6 5 0 2-1.2 3.3-2.6 3.3s-2.7-1.2-2.6-3c.1-1.6 1.5-2.4 2.6-5.3z" fill="${on ? '#F8D57E' : '#ECE7DF'}"/></svg>`,
+  calendar: (size = 20) => line('<rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/><circle cx="12" cy="14.8" r="1.4" fill="currentColor" stroke="none"/>', size),
+  target: (size = 20) => line('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/>', size),
+  grid: (size = 20) => line('<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>', size),
+  shield: (size = 16, on = true) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8-7.5 9.5-4.3-1.5-7.5-4.9-7.5-9.5V6z" fill="${on ? '#8CCFB4' : '#E2DDD5'}"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  gift: (size = 20) => line('<rect x="4" y="9" width="16" height="11" rx="2"/><path d="M3.5 9h17M12 9v11M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z"/>', size),
 };
 
 /** Mağaza kostüm ikonları (küçük renkli çizimler) */

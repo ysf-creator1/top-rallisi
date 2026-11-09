@@ -45,6 +45,17 @@ function sanitize(d: SaveData): SaveData {
   if (!out.ownedBalls.includes('standard')) out.ownedBalls.unshift('standard');
   if (!out.ownedBalls.includes(out.ball)) out.ball = 'standard';
   out.ownedCostumes = Array.isArray(d.ownedCostumes) ? d.ownedCostumes.filter((x) => typeof x === 'string') : [];
+  const st = d.streak as Partial<SaveData['streak']> | undefined;
+  out.streak =
+    st && typeof st === 'object' && typeof st.count === 'number'
+      ? { last: typeof st.last === 'string' ? st.last : null, count: Math.max(0, st.count | 0), best: Math.max(0, (st.best ?? 0) | 0), shield: st.shield ? 1 : 0 }
+      : def.streak;
+  const wk = d.weekly as Partial<SaveData['weekly']> | undefined;
+  out.weekly =
+    wk && typeof wk === 'object' && typeof wk.week === 'string'
+      ? { week: wk.week, progress: { ...(wk.progress ?? {}) }, seen: { ...(wk.seen ?? {}) }, done: Array.isArray(wk.done) ? wk.done : [] }
+      : def.weekly;
+  out.dailyDone = typeof d.dailyDone === 'string' ? d.dailyDone : null;
   out.points = typeof d.points === 'number' && isFinite(d.points) ? Math.max(0, Math.round(d.points)) : 0;
   return out;
 }

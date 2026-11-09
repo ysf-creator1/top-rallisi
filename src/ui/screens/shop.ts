@@ -5,6 +5,7 @@ import type { BallType } from '../../config/physics';
 import { BALLS, COSTUMES, COSTUME_CATEGORIES, CROWN_LEVELS, isSkinCategory, type CostumeCategory, type CostumeItem } from '../../config/shop';
 import { formatPoints, t } from '../../i18n';
 import { play } from '../../platform/audio';
+import { dailySale, dayKey, priceToday } from '../../game/meta';
 import type { Costume } from '../../save/schema';
 import type { App } from '../app';
 import { clear, h, svg } from '../dom';
@@ -81,6 +82,10 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
   let preview: ShopPreview | null = null;
 
   const owned = (id: string) => save.data.ownedCostumes.includes(id);
+  const today = dayKey();
+  const sale = dailySale(today);
+  const onSale = (it: CostumeItem) => sale.some((x) => x.id === it.id);
+  const saleStrip = h('div.sale-strip');
   const completedLevels = Object.values(save.data.levels).filter((r) => r.completed).length;
 
   const previewCostume = (): Costume => {
@@ -106,6 +111,35 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
       : [t('shop.notEnough'), h('span.price', [svg(icons.coin(16)), formatPoints(price)])]);
   };
 
+  /** Bugün indirimdeki iki parça: dokununca o parça denenir */
+  const renderSale = () => {
+    clear(saleStrip);
+    saleStrip.append(h('div.sale-head', [h('b', t('shop.sale')), h('small', t('shop.saleNote'))]));
+    const row = h('div.sale-row');
+    for (const it of sale) {
+      const has = owned(it.id);
+      row.append(
+        h(`button.sale-item${has ? '.owned' : ''}`, {
+          onclick: () => {
+            tab = lastTab = 'costumes';
+            cat = lastCat = it.category;
+            trying = has ? null : it;
+            play('tap');
+            render();
+          },
+        }, [
+          h('div.ico', { style: { background: ICON_BG[it.tint] ?? '#F4F1EC' }, html: costumeIcon(it.category, it.key, it.tint, save.data.costume.number ?? 7) }),
+          h('span.nm', t(`costume.${it.category}.${it.key}`)),
+          has
+            ? h('span.st', t('shop.owned'))
+            : h('span.st.price', [h('s', formatPoints(it.price)), svg(icons.coin(13)), formatPoints(priceToday(it, today))]),
+          h('span.sale-tag', t('shop.saleTag')),
+        ]),
+      );
+    }
+    saleStrip.append(row);
+  };
+
   const renderTabs = () => {
     clear(tabs);
     for (const [k, label] of [['balls', t('shop.balls')], ['costumes', t('shop.costumes')]] as const) {
@@ -117,7 +151,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
             ballSel = save.data.ball;
             render();
           },
-        }, label),
+        }, [label, k === 'costumes' && tab !== 'costumes' && sale.some((x) => !owned(x.id)) ? h('span.tab-sale', t('shop.saleTag')) : null]),
       );
     }
   };
@@ -202,6 +236,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
       if (locked) st = h('span.st', t(it.lockedText!));
       else if (on) st = h('span.st.equipped', t('shop.equipped'));
       else if (has) st = h('span.st', t('shop.owned'));
+      else if (onSale(it)) st = h('span.st.price', [h('s', formatPoints(it.price)), svg(icons.coin(13)), formatPoints(priceToday(it, today))]);
       else st = h('span.st.price', [svg(icons.coin(13)), formatPoints(it.price)]);
       grid.append(
         h(`button.item-card${on ? '.on' : ''}${trying?.id === it.id ? '.selected' : ''}${locked ? '.locked' : ''}`, {
@@ -221,6 +256,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
           h('div.ico', { style: { background: locked ? '#EFEBE5' : ICON_BG[it.tint] ?? '#F4F1EC' }, html: costumeIcon(cat, it.key, it.tint, cur.number ?? 7) }),
           h('span.nm', name),
           st,
+          !has && !locked && onSale(it) ? h('span.sale-tag', t('shop.saleTag')) : null,
         ]),
       );
     }
@@ -245,16 +281,17 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
     body.append(h('p.note', t('shop.note')));
     if (trying) {
       const it = trying;
+      const price = priceToday(it, today);
       bottom.append(
-        buyButton(it.price, () => {
+        buyButton(price, () => {
           save.update((d) => {
-            d.points -= it.price;
+            d.points -= price;
             d.ownedCostumes.push(it.id);
           });
           equip(it, it.category);
           trying = null;
           play('buy');
-          track('buy', { item: it.id, price: it.price });
+          track('buy', { item: it.id, price, sale: price !== it.price || undefined });
           toast(app, t('toast.bought', { item: t(`costume.${it.category}.${it.key}`) }));
           render();
         }),
@@ -264,6 +301,8 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
 
   const render = () => {
     renderTabs();
+    renderSale();
+    saleStrip.style.display = tab === 'costumes' ? '' : 'none';
     clear(body);
     clear(bottom);
     if (tab === 'balls') renderBalls();
@@ -280,6 +319,7 @@ export function shopScreen(app: App, onBack: () => void): { el: HTMLElement; cle
       ]),
       previewBox,
       tabs,
+      saleStrip,
       body,
       bottom,
     ]),

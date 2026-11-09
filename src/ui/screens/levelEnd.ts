@@ -2,12 +2,15 @@
 
 import type { BallType } from '../../config/physics';
 import type { TimeTargets } from '../../config/scoring';
+import type { GhostData } from '../../game/ghost';
 import type { LevelData } from '../../game/levels/types';
+import { play } from '../../platform/audio';
 import { formatDelta, formatTime, t } from '../../i18n';
 import type { RunRecord } from '../../save/schema';
 import type { App } from '../app';
 import { h, svg } from '../dom';
 import { icons } from '../icons';
+import { confettiLayer } from './dialogs';
 
 export interface EndInfo {
   level: LevelData;
@@ -23,6 +26,15 @@ export interface EndInfo {
   /** Bu denemenin yıldız süreleri (moda göre) */
   targets: TimeTargets;
   control: 'ropes' | 'tilt';
+  /** Bu denemeyle ilk kez kazanılan süre yıldızı sayısı */
+  newStars: number;
+  /** Oyuncunun ilk yıldızları (daha önce hiç yıldızı yoktu) */
+  firstStars: boolean;
+  /** Bu denemenin hayaleti (meydan okuma linki için) */
+  ghost: GhostData;
+  /** Meydan okumada arkadaşın süresi */
+  friendTime: number | null;
+  daily: boolean;
 }
 
 const HOLE_SVG = `<svg width="140" height="104" viewBox="0 0 140 104" aria-hidden="true">
@@ -44,6 +56,13 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
     el.style.animationDelay = `${150 + i * 140}ms`;
     stars.append(el);
   }
+  // Yeni yıldız kazanıldıysa küçük kutlama: her yıldızda ses, yazı, 3 yıldızda ya da ilk yıldızda konfeti
+  const celebrate = info.newStars > 0;
+  if (celebrate) for (let i = 0; i < info.timeStars; i++) setTimeout(() => play('star'), 180 + i * 140);
+  const celeText =
+    info.timeStars === 3 ? t('cele.three') : info.firstStars ? t('cele.first') : info.timeStars === 2 ? t('cele.two') : t('cele.more', { n: info.newStars });
+  const cele = celebrate ? h(`div.cele${info.timeStars === 3 ? '.gold' : ''}`, celeText) : null;
+  const confetti = celebrate && (info.timeStars === 3 || info.firstStars) ? confettiLayer(42, 0.35) : null;
 
   // Rekora yakınlık
   const recordRow = h('div.end-record');
@@ -60,6 +79,16 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
   if (info.ball !== 'standard') recordRow.append(h('span.pill.info', t('end.ballUsed', { ball: t(`ball.${info.ball}`) })));
   if (info.assist) recordRow.append(h('span.pill.info', [svg(icons.assist(12)), t('levels.assisted')]));
   if (info.control === 'ropes') recordRow.append(h('span.pill.info', t('end.ropesTimes')));
+  if (info.daily) recordRow.append(h('span.pill.info', [svg(icons.calendar(13)), t('title.daily')]));
+  // Meydan okuma sonucu
+  const friendRow =
+    info.friendTime === null
+      ? null
+      : h('div.end-record', [
+          info.time < info.friendTime
+            ? h('span.pill.ok', t('end.beatFriend', { t: formatDelta(info.friendTime - info.time) }))
+            : h('span.pill.warn', t('end.friendAhead', { t: formatDelta(info.time - info.friendTime) })),
+        ]);
 
   // 2 ve 3 yıldız için gereken süreler (kazanılanlar yeşil)
   const tt = info.targets;
@@ -72,13 +101,25 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
   const capLine = info.assist ? h('div.end-next', t('end.assistCap')) : null;
 
   const next = app.nextLevelOf(L);
-  const hasGhost = !!app.ghostFor(L.id, info.assist);
-  return h('div.overlay.end', [
+  const friend = info.friendTime !== null;
+  const hasGhost = friend || !!app.ghostFor(L.id, info.assist);
+  // Link önceden hazırlanır: telefonun paylaş menüsü dokunuşun hemen ardından açılmalı
+  let link: string | null = null;
+  const linkP = app.challengeLink(info).then((u) => (link = u)).catch(() => null);
+  const shareBtn = h('button.glass.challenge-btn', {
+    onclick: async () => {
+      const url = link ?? (await linkP);
+      if (url) void app.shareChallenge(info, url);
+    },
+  }, [svg(icons.share()), t('end.challenge')]);
+  const root = h('div.overlay.end', [
     h('div.sheet', [
       h('div.end-hole', { html: HOLE_SVG }),
       h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, [h('h2', t('end.title')), h('div.end-sub', app.levelLabel(L))]),
       stars,
+      cele,
       h('div.end-time', formatTime(info.time)),
+      friendRow,
       recordRow,
       goals,
       capLine,
@@ -91,14 +132,17 @@ export function levelEndScreen(app: App, info: EndInfo): HTMLElement {
         : h('button.btn-primary', { onclick: () => app.showMap() }, t('end.map')),
       h('div.two', [
         h('button.btn-secondary', { onclick: () => app.restartLevel(false) }, [svg(icons.restart()), t('end.retry')]),
-        h('button.btn-secondary', { disabled: !hasGhost, onclick: () => app.restartLevel(true) }, [svg(icons.ghost()), t('end.ghost')]),
+        h('button.btn-secondary', { disabled: !hasGhost, onclick: () => app.restartLevel(true) }, [svg(icons.ghost()), t(friend ? 'challenge.again' : 'end.ghost')]),
       ]),
       h('div.end-nav', [
         h('button.round-btn.glass', { 'aria-label': t('end.home'), onclick: () => app.showTitle() }, [svg(icons.home())]),
+        shareBtn,
         next ? h('button.round-btn.glass', { 'aria-label': t('end.map'), onclick: () => app.showMap() }, [svg(icons.map())]) : null,
       ]),
     ]),
   ]);
+  if (confetti) root.prepend(confetti);
+  return root;
 }
 
 /** Yıldız süresi: 45 → "45 sn", 65 → "1:05" */

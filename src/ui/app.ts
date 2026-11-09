@@ -3,7 +3,9 @@
 import { ASSIST, physics, type BallType } from '../config/physics';
 import { PLAYABLE_WORLDS, UNLOCK_BY_COMPLETION, WORLD_UNLOCK, pointsEarned, targetsFor, timeBonus, timeStars } from '../config/scoring';
 import { THEMES, themeForWorld, trackHex, type ThemeId } from '../config/theme';
+import { challengeFromHash, challengeUrl, decodeChallenge, encodeChallenge, type Challenge } from '../game/challenge';
 import { parseGhost, type GhostData } from '../game/ghost';
+import { DAILY_REWARD, STREAK_GIFT_POINTS, dailyLevel, dayKey, giftBall, streakAfterPlay, weeklyAfterRun } from '../game/meta';
 import { KeyboardInput } from '../game/input/keyboard';
 import { RopeInput } from '../game/input/ropes';
 import { initBackButton } from '../platform/backButton';
@@ -14,18 +16,21 @@ import { Track } from '../game/physics/track';
 import type { Quality } from '../game/render/common';
 import { GameRenderer } from '../game/render/scene';
 import { GameSession, type SessionResult } from '../game/session';
-import { t } from '../i18n';
+import { formatTime, t } from '../i18n';
 import { initAnalytics, track } from '../platform/analytics';
 import { play, setSoundEnabled, suspendAudio, unlockAudio } from '../platform/audio';
 import { getQueryParam, isIOS, isLandscapePhone, isStandalone, isTouchDevice, requestFullscreen } from '../platform/device';
 import { setHapticsEnabled, vibrate } from '../platform/haptics';
+import { appBaseUrl, clearHash, onHashChange, readHash, shareLink } from '../platform/share';
 import { requestTilt, startTilt, tiltAvailable } from '../platform/tilt';
 import { SaveStore } from '../save/save';
 import type { LevelRecord, RunRecord } from '../save/schema';
 import { h } from './dom';
 import { RopeCoach } from './coach';
 import { Hud } from './hud';
-import { showA2hs, showConfirm, showTiltPermission, showWorldUnlocked } from './screens/dialogs';
+import { showA2hs, showChallenge, showConfirm, showStreakGift, showTiltPermission, showWorldUnlocked } from './screens/dialogs';
+import { collectionScreen } from './screens/collection';
+import { goalsScreen } from './screens/goals';
 import { controlPickOverlay } from './screens/controlPick';
 import { DevPanel } from './screens/dev';
 import { levelEndScreen, type EndInfo } from './screens/levelEnd';
@@ -40,7 +45,18 @@ import { toast } from './toast';
 
 const FIRST_LEVEL = 'w1-01';
 
-export type ScreenName = 'title' | 'map' | 'levels' | 'game' | 'shop' | 'settings';
+export type ScreenName = 'title' | 'map' | 'levels' | 'game' | 'shop' | 'settings' | 'goals' | 'collection';
+
+export interface StartOptions {
+  ghost?: boolean;
+  preview?: boolean;
+  /** Günün etabı olarak açıldı (ödül ve görev için) */
+  daily?: boolean;
+  /** Arkadaşın linkle gönderdiği hayaletle yarış */
+  challenge?: Challenge;
+  /** İlk açılış: kontrol kartından doğrudan birinci etaba (bilgi kartı gösterilmez) */
+  firstRun?: boolean;
+}
 
 interface Mounted {
   el: HTMLElement;
@@ -78,6 +94,14 @@ export class App {
   private run: { id: string; at: number } | null = null;
   private rotateEl: HTMLElement;
   private firstTouchDone = false;
+  /** Süren etap günün etabı olarak mı açıldı */
+  dailyRun = false;
+  /** Süren meydan okuma (arkadaşın hayaleti) */
+  challenge: Challenge | null = null;
+  /** Linkle gelen, henüz gösterilmemiş meydan okuma */
+  private pendingChallenge: Challenge | null = null;
+  /** Rekor ve puan yazılır mı (kilitli etaplar günün etabı ya da meydan okumayla oynanınca yazılmaz) */
+  private recordable = true;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -143,6 +167,8 @@ export class App {
     this.onResize();
     this.showTitle();
     this.maybePickControl();
+    void this.checkChallengeLink();
+    onHashChange(() => void this.checkChallengeLink());
     initBackButton(() => this.handleBack());
     requestAnimationFrame(this.loop);
   }
@@ -321,6 +347,21 @@ export class App {
     this.mount('shop', m, false);
   }
 
+  showGoals(): void {
+    this.session = null;
+    this.mount('goals', { el: goalsScreen(this) }, false);
+  }
+
+  showCollection(back: () => void = () => this.showTitle()): void {
+    this.session = null;
+    this.mount('collection', { el: collectionScreen(this, back) }, false);
+  }
+
+  /** Bugünün etabını açar (kilitli olsa da) */
+  playDaily(): void {
+    void this.startLevel(dailyLevel(LEVELS, dayKey()), { daily: true });
+  }
+
   showSettings(fromPause = false, afterBack?: () => void): void {
     if (fromPause) {
       // Oyun duraklatılmış kalır; ayarlar üstte açılır
@@ -398,8 +439,11 @@ export class App {
   /** Geliştirici önizlemesi: puan ve rekor kaydedilmez */
   private previewMode = false;
 
-  async startLevel(level: LevelData, opts: { ghost?: boolean; preview?: boolean } = {}): Promise<void> {
+  async startLevel(level: LevelData, opts: StartOptions = {}): Promise<void> {
     this.previewMode = !!opts.preview;
+    this.dailyRun = !!opts.daily;
+    this.challenge = opts.challenge ?? null;
+    this.recordable = !this.previewMode && this.levelUnlocked(level);
     requestFullscreen();
     unlockAudio();
     const s = this.save.data.settings;
@@ -414,7 +458,7 @@ export class App {
     this.currentLevel = level;
     this.worldShown = level.world;
     const assist = s.assist;
-    const ghost = opts.ghost ? this.ghostFor(level.id, assist) : null;
+    const ghost = this.challenge ? this.challenge.ghost : opts.ghost ? this.ghostFor(level.id, assist) : null;
     this.ghostMode = !!ghost;
     this.coach.arm(coachLevel(level) && !ghost);
     this.loadLevelVisuals(level, !!ghost);
@@ -451,7 +495,7 @@ export class App {
     this.beginRun(level, !!ghost);
     this.hud.prepare(level, !!ghost);
     // Birinci etapta nasıl oynandığını anlat (diğer etaplarda değil)
-    if (level.id === FIRST_LEVEL && !ghost) this.showTutorial();
+    if (level.id === FIRST_LEVEL && !ghost && !opts.firstRun) this.showTutorial();
     // Bir engel ilk kez çıktığı etapta kısa bir ipucu
     const hint = obstacleHint(level);
     if (hint && !ghost) setTimeout(() => this.session && toast(this, t(hint), undefined, 5200), 2400);
@@ -536,9 +580,14 @@ export class App {
   restartLevel(ghost = false): void {
     if (!this.currentLevel) return;
     this.closeOverlay();
+    // Meydan okumada "tekrar yarış" aynı arkadaş hayaletiyle
+    if (this.challenge) {
+      void this.startLevel(this.currentLevel, { challenge: ghost ? this.challenge : undefined, daily: this.dailyRun });
+      return;
+    }
     // Hayaletle yarışta hayalet her seferinde son rekordan yeniden okunur
     if (ghost || ghost !== this.ghostMode) {
-      void this.startLevel(this.currentLevel, { ghost, preview: this.previewMode });
+      void this.startLevel(this.currentLevel, { ghost, preview: this.previewMode, daily: this.dailyRun });
       return;
     }
     this.endRun('restart');
@@ -561,11 +610,14 @@ export class App {
     const targets = targetsFor(level.timeTargets, control);
     const tStars = timeStars(r.time, targets, assist);
     const bonus = timeBonus(r.time, targets);
-    const earned = this.previewMode ? 0 : pointsEarned(prev, tStars, r.stars, bonus);
-    const isRecord = !prevBest || r.time < prevBest.time - 1e-6;
+    const recordable = this.recordable;
+    const earned = recordable ? pointsEarned(prev, tStars, r.stars, bonus) : 0;
+    const isRecord = recordable && (!prevBest || r.time < prevBest.time - 1e-6);
     const unlockedBefore = PLAYABLE_WORLDS.filter((w) => this.worldUnlocked(w));
+    const starsBefore = this.totalStars();
+    const ghostTime = this.session?.opts.ghost?.time ?? null;
 
-    if (!this.previewMode) this.save.update((d) => {
+    if (recordable) this.save.update((d) => {
       const rec: LevelRecord = d.levels[level.id] ?? { completed: false, timeStars: 0, stars: [], bonus: 0 };
       rec.completed = true;
       rec.timeStars = Math.max(rec.timeStars, tStars);
@@ -579,7 +631,8 @@ export class App {
       d.levels[level.id] = rec;
       d.points += earned;
     });
-    if (isRecord && !this.previewMode) this.save.setGhost(level.id, assist, JSON.stringify(r.ghost));
+    if (isRecord) this.save.setGhost(level.id, assist, JSON.stringify(r.ghost));
+    const notes = this.previewMode ? { texts: [], gift: null } : this.applyMeta(level, { tStars, falls: r.falls, beatRecord: isRecord && !!prevBest, firstClear: recordable && !prev?.completed, earned, ghostWin: ghostTime !== null && r.time < ghostTime - 1e-6 });
 
     const info: EndInfo = {
       level,
@@ -594,6 +647,11 @@ export class App {
       maxTimeStars: assist ? ASSIST.maxTimeStars : 3,
       targets,
       control,
+      newStars: recordable ? Math.max(0, tStars - (prev?.timeStars ?? 0)) : 0,
+      firstStars: recordable && starsBefore === 0,
+      ghost: r.ghost,
+      friendTime: this.challenge ? this.challenge.time : null,
+      daily: this.dailyRun,
     };
     track('le', {
       lvl: level.id,
@@ -606,6 +664,8 @@ export class App {
       pts: earned,
       ctrl: control,
       assist,
+      daily: this.dailyRun || undefined,
+      chal: this.challenge ? Math.round(this.challenge.time * 100) / 100 : undefined,
       dur: this.runSeconds(),
       fps: Math.round(this.fps),
     });
@@ -620,6 +680,108 @@ export class App {
         play('record');
         showWorldUnlocked(this, w, () => this.showLevels(w));
       }, 900);
+    // Günün etabı, görev ve seri bildirimleri sırayla
+    notes.texts.forEach((txt, i) => setTimeout(() => toast(this, txt, undefined, 3200), 1500 + i * 1100));
+    const gift = notes.gift;
+    if (gift)
+      setTimeout(() => {
+        play('record');
+        showStreakGift(this, gift.days, gift.ball, gift.points, () => {
+          if (gift.ball) this.save.update((d) => (d.ball = gift.ball!));
+        });
+      }, w ? 2600 : 1400 + notes.texts.length * 1100);
+  }
+
+  /** Günün etabı, gün serisi ve haftalık görevler: ödülleri yazar, bildirim metinlerini döndürür */
+  private applyMeta(
+    level: LevelData,
+    run: { tStars: number; falls: number; beatRecord: boolean; firstClear: boolean; earned: number; ghostWin: boolean },
+  ): { texts: string[]; gift: { days: number; ball: BallType | null; points: number } | null } {
+    const today = dayKey();
+    const d0 = this.save.data;
+    const isDaily = this.dailyRun && level.id === dailyLevel(LEVELS, today).id;
+    const dailyPaid = isDaily && d0.dailyDone !== today;
+    const sr = streakAfterPlay(d0.streak, today);
+    const wr = weeklyAfterRun(d0.weekly, today, {
+      levelId: level.id,
+      timeStars: run.tStars,
+      falls: run.falls,
+      beatRecord: run.beatRecord,
+      firstClear: run.firstClear,
+      earned: run.earned,
+      daily: isDaily,
+      ghostWin: run.ghostWin,
+    });
+    let gift: { days: number; ball: BallType | null; points: number } | null = null;
+    this.save.update((d) => {
+      d.streak = sr.streak;
+      d.weekly = wr.weekly;
+      if (dailyPaid) {
+        d.dailyDone = today;
+        d.points += DAILY_REWARD;
+      }
+      for (const g of wr.completed) d.points += g.reward;
+      if (sr.gift) {
+        const ball = giftBall(d.ownedBalls);
+        if (ball) d.ownedBalls.push(ball);
+        else d.points += STREAK_GIFT_POINTS;
+        gift = { days: sr.streak.count, ball, points: ball ? 0 : STREAK_GIFT_POINTS };
+      }
+    });
+    const texts: string[] = [];
+    if (dailyPaid) texts.push(t('toast.daily', { n: DAILY_REWARD }));
+    for (const g of wr.completed) {
+      texts.push(t('toast.goalDone', { goal: t(`goal.${g.id}`), n: g.reward }));
+      track('goal', { g: g.id, week: wr.weekly.week });
+    }
+    if (sr.usedShield) texts.push(t('toast.shield'));
+    else if (sr.advanced && !sr.gift && sr.streak.count >= 2) texts.push(t('toast.streak', { n: sr.streak.count }));
+    if (sr.advanced) track('streak', { n: sr.streak.count, shield: sr.usedShield || undefined });
+    return { texts, gift };
+  }
+
+  // ---------- Meydan okuma ----------
+
+  /** Bitirilen denemenin paylaşılacak linki */
+  async challengeLink(info: EndInfo): Promise<string> {
+    const payload = await encodeChallenge({ ghost: info.ghost, assist: info.assist, control: info.control });
+    return challengeUrl(appBaseUrl(), payload);
+  }
+
+  async shareChallenge(info: EndInfo, url: string): Promise<void> {
+    const res = await shareLink({
+      title: t('challenge.shareTitle'),
+      text: t('challenge.shareText', { level: info.level.name, t: formatTime(info.time) }),
+      url,
+    });
+    track('chShare', { lvl: info.level.id, res, len: url.length });
+    if (res === 'copied') toast(this, t('challenge.copied'));
+    else if (res === 'failed') toast(this, t('challenge.fail'));
+  }
+
+  /** Adresteki meydan okuma linkini okur */
+  private async checkChallengeLink(): Promise<void> {
+    const payload = challengeFromHash(readHash());
+    if (!payload) return;
+    clearHash();
+    const c = await decodeChallenge(payload, (id) => !!getLevel(id));
+    track('chOpen', { ok: !!c, lvl: c?.levelId });
+    if (!c) {
+      toast(this, t('challenge.bad'));
+      return;
+    }
+    this.pendingChallenge = c;
+    // Yeni oyuncu önce kontrolünü seçer, sonra meydan okuma gösterilir
+    if (this.save.data.flags.controlChosen) this.offerChallenge();
+  }
+
+  private offerChallenge(): void {
+    const c = this.pendingChallenge;
+    const level = c && getLevel(c.levelId);
+    this.pendingChallenge = null;
+    if (!c || !level) return;
+    if (this.screen === 'game') this.pauseGame();
+    showChallenge(this, level.name, this.levelLabel(level), c.time, () => void this.startLevel(level, { challenge: c }));
   }
 
   // ---------- İstatistik ----------
@@ -636,6 +798,8 @@ export class App {
       mode: s.control,
       assist: s.assist,
       ghost: ghost || undefined,
+      daily: this.dailyRun || undefined,
+      chal: this.challenge ? true : undefined,
       again: restart || undefined,
       ball: this.save.data.ball,
       q: this.renderer.quality,
@@ -697,6 +861,12 @@ export class App {
         this.closeOverlay();
         // Eğim izni (iPhone) etap başlarken istenir
         this.applySettings();
+        // Linkle gelen meydan okuma önce; yoksa yeni oyuncu menülere uğramadan birinci etaba geçer
+        if (this.pendingChallenge) this.offerChallenge();
+        else if (!Object.values(this.save.data.levels).some((r) => r.completed)) {
+          const first = getLevel(FIRST_LEVEL);
+          if (first) void this.startLevel(first, { firstRun: true });
+        }
       }),
     );
   }

@@ -2,6 +2,7 @@
 
 import type { BallType } from '../config/physics';
 import type { TrackColorId } from '../config/theme';
+import { defaultStreak, defaultWeekly, type StreakState, type WeeklyState } from '../game/meta';
 
 export const CURRENT_VERSION = 2;
 export const SAVE_KEY = 'top-rallisi.save';
@@ -65,6 +66,12 @@ export interface SaveData {
   ball: BallType;
   ownedCostumes: string[];
   costume: Costume;
+  /** Gün serisi (etap bitirilen ardışık günler) */
+  streak: StreakState;
+  /** Bu haftanın görev ilerlemesi */
+  weekly: WeeklyState;
+  /** Günün etabı ödülünün alındığı son gün */
+  dailyDone: string | null;
   flags: { a2hsShown: boolean; hintRopes: boolean; hintTilt: boolean; /** Eğim duyarlılığı varsayılanı düşüğe çekildi */ tiltLow: boolean; /** İlk açılışta kontrol seçimi (eğim / çift halat) yapıldı */ controlChosen: boolean };
 }
 
@@ -102,6 +109,9 @@ export function defaultSave(): SaveData {
     ball: 'standard',
     ownedCostumes: [],
     costume: { ...DEFAULT_COSTUME },
+    streak: defaultStreak(),
+    weekly: defaultWeekly(),
+    dailyDone: null,
     flags: { a2hsShown: false, hintRopes: false, hintTilt: false, tiltLow: true, controlChosen: false },
   };
 }

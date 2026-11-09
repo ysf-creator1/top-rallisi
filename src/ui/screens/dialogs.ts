@@ -1,10 +1,12 @@
 // Onay, eğim izni ve "Ana ekrana ekle" diyalogları.
 
-import { t } from '../../i18n';
+import type { BallType } from '../../config/physics';
+import { formatPoints, formatTime, t } from '../../i18n';
 import { tiltNeedsPermission } from '../../platform/tilt';
 import type { App } from '../app';
 import { h, svg } from '../dom';
 import { icons } from '../icons';
+import { ballGradient } from './settings';
 
 function modal(app: App, children: (HTMLElement | null)[], onBackdrop?: () => void): HTMLElement {
   const el = h('div.overlay', { style: { zIndex: '40' } }, [h('div.sheet', children)]);
@@ -64,18 +66,68 @@ export function showA2hs(app: App): void {
 
 const CONFETTI = ['#8CCFB4', '#F2C46D', '#E8907E', '#B3A3E0', '#A8CDE8'];
 
-/** Yeni dünya açılınca büyük kutlama kartı ve konfeti */
-export function showWorldUnlocked(app: App, world: number, onGo: () => void): void {
+/** Yukarıdan dökülen konfeti katmanı (hareket azaltma açıksa boş) */
+export function confettiLayer(count = 36, delay = 0): HTMLElement {
   const confetti = h('div.confetti');
-  for (let i = 0; i < 36; i++) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return confetti;
+  for (let i = 0; i < count; i++) {
     const c = h('i');
     c.style.left = `${Math.random() * 100}%`;
     c.style.background = CONFETTI[i % CONFETTI.length];
-    c.style.animationDelay = `${Math.random() * 0.6}s`;
+    c.style.animationDelay = `${delay + Math.random() * 0.6}s`;
     c.style.animationDuration = `${1.6 + Math.random() * 1.2}s`;
     c.style.transform = `rotate(${Math.random() * 360}deg)`;
     confetti.append(c);
   }
+  return confetti;
+}
+
+/** Arkadaşın gönderdiği meydan okuma linki açılınca */
+export function showChallenge(app: App, levelName: string, label: string, time: number, onGo: () => void): void {
+  const el = modal(
+    app,
+    [
+      h('div.unlock-badge.ghosty', [svg(icons.ghost())]),
+      h('h2', t('challenge.title')),
+      h('div.end-sub', label),
+      h('p', t('challenge.body', { level: levelName, t: formatTime(time) })),
+      h('div.btns', [
+        h('button.btn-primary', { onclick: () => { el.remove(); onGo(); } }, [svg(icons.play(20)), t('challenge.go')]),
+        h('button.btn-secondary', { onclick: () => el.remove() }, t('challenge.later')),
+      ]),
+    ],
+    () => el.remove(),
+  );
+}
+
+/** 7 günlük seri hediyesi: yeni top ya da puan */
+export function showStreakGift(app: App, days: number, ball: BallType | null, points: number, onUse: () => void): void {
+  const prize = ball
+    ? h('div.gift-prize', [h('span.ball-dot.big', { style: { background: ballSwatch(ball) } }), h('b', t(`ball.${ball}`))])
+    : h('div.gift-prize', [svg(icons.coin(30)), h('b', t('gift.points', { n: formatPoints(points) }))]);
+  const el = modal(app, [
+    h('div.unlock-badge.flame', { html: icons.flame(42) }),
+    h('h2', t('gift.title', { n: days })),
+    h('p', t('gift.body')),
+    prize,
+    h('div.btns', [
+      ball ? h('button.btn-primary', { onclick: () => { el.remove(); onUse(); } }, t('gift.use')) : null,
+      h(ball ? 'button.btn-secondary' : 'button.btn-primary', { onclick: () => el.remove() }, t('gift.ok')),
+    ]),
+  ]);
+  el.classList.add('unlock');
+  el.prepend(confettiLayer());
+}
+
+/** Hediye kartındaki top rengi (mağazadaki renkler) */
+function ballSwatch(ball: BallType): string {
+  const [a, b, c] = ballGradient(ball);
+  return `radial-gradient(circle at 38% 32%, ${a}, ${b} 50%, ${c})`;
+}
+
+/** Yeni dünya açılınca büyük kutlama kartı ve konfeti */
+export function showWorldUnlocked(app: App, world: number, onGo: () => void): void {
+  const confetti = confettiLayer();
   const el = modal(app, [
     h('div.unlock-badge', [svg(icons.map())]),
     h('h2', t('unlock.title', { world: t(`world.${world}`) })),
