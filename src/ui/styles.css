@@ -1809,6 +1809,46 @@ body[data-theme='aksam'] .shop-preview {
   max-height: 100%;
   overflow-y: auto;
   touch-action: pan-y;
+  scrollbar-width: none;
+}
+.sheet.tut::-webkit-scrollbar {
+  display: none;
+}
+.sheet.tut h2 {
+  padding: 0 44px;
+  text-align: center;
+}
+.tut-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+}
+.tut-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  z-index: 2;
+}
+.tut-bar {
+  position: absolute;
+  right: 7px;
+  top: 64px;
+  bottom: 24px;
+  width: 5px;
+  border-radius: 3px;
+  background: rgba(59, 63, 69, 0.1);
+  pointer-events: none;
+}
+.tut-thumb {
+  width: 100%;
+  border-radius: 3px;
+  background: rgba(59, 63, 69, 0.42);
+  will-change: transform;
 }
 .tut-demo {
   margin: 0;

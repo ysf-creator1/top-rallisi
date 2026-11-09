@@ -28,8 +28,7 @@ export function tutorialOverlay(app: App, onStart: () => void, onSettings?: () =
         h('button.btn-secondary', { onclick: onSettings }, [svg(icons.gear()), t('tutorial.settings')]),
       ]
     : [h('button.btn-primary', { onclick: onStart }, [svg(icons.check()), t('tutorial.close')])];
-  return h('div.overlay', [
-    h('div.sheet.tut', [
+  const sheet = h('div.sheet.tut', [
       h('h2', t('tutorial.title')),
       demo('ropes.webp', t('tutorial.demo.ropes'), t('tutorial.ropes.body')),
       demo('tilt.webp', t('tutorial.demo.tilt'), t('tutorial.tilt.body')),
@@ -41,6 +40,24 @@ export function tutorialOverlay(app: App, onStart: () => void, onSettings?: () =
       h('p.tut-tip', [svg(icons.star(16)), t('tutorial.tip')]),
       row(icons.keys(), t('tutorial.keys.title'), t('tutorial.keys.body'), '#ECEEF1'),
       h('div.btns', btns),
-    ]),
   ]);
+  // Sağda kaydırma çubuğu: aşağıda devamı olduğunu gösterir (telefonlarda sistem çubuğu görünmüyor)
+  const thumb = h('div.tut-thumb');
+  const bar = h('div.tut-bar', [thumb]);
+  const update = () => {
+    const { scrollTop, scrollHeight, clientHeight } = sheet;
+    const over = scrollHeight - clientHeight;
+    bar.style.display = over > 4 ? '' : 'none';
+    if (over <= 4) return;
+    const track = bar.clientHeight;
+    const th = Math.max(36, (track * clientHeight) / scrollHeight);
+    thumb.style.height = `${th}px`;
+    thumb.style.transform = `translateY(${((track - th) * scrollTop) / over}px)`;
+  };
+  sheet.addEventListener('scroll', update, { passive: true });
+  sheet.querySelectorAll('img').forEach((img) => img.addEventListener('load', update));
+  requestAnimationFrame(update);
+  setTimeout(update, 300);
+  const close = h('button.round-btn.white.tut-close', { 'aria-label': t('common.close'), onclick: onStart }, [svg(icons.close())]);
+  return h('div.overlay', [h('div.tut-wrap', [sheet, bar, close])]);
 }
