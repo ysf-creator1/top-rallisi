@@ -1116,15 +1116,18 @@ function render() {
 // Tarayıcının yazdırma penceresi açılır; hedef olarak "PDF olarak kaydet" seçilir.
 let printing = false;
 const RANGE_LABEL = { today: 'Bugün', '7': 'Son 7 gün', '30': 'Son 30 gün', '90': 'Son 90 gün', all: 'Tüm zamanlar' };
+function preparePrint(created = Date.now()) {
+  printing = true;
+  render();
+  $('#printInfo').textContent = `Aralık: ${RANGE_LABEL[state.range] || state.range} · ${fmtN(model.players.length)} oyuncu, ${fmtN(model.sessions.length)} oturum · Oluşturulma: ${dtfY.format(new Date(created))}`;
+  // PDF dosya adı sayfa başlığından gelir
+  document.title = `Top Rallisi Raporu ${dayKey(Date.now())} (${RANGE_LABEL[state.range] || state.range})`;
+}
 function exportPdf() {
   if (!user || !model) return;
   hideTip();
-  printing = true;
-  render();
   const oldTitle = document.title;
-  $('#printInfo').textContent = `Aralık: ${RANGE_LABEL[state.range] || state.range} · ${fmtN(model.players.length)} oyuncu, ${fmtN(model.sessions.length)} oturum · Oluşturulma: ${dtfY.format(new Date())}`;
-  // PDF dosya adı sayfa başlığından gelir
-  document.title = `Top Rallisi Raporu ${dayKey(Date.now())} (${RANGE_LABEL[state.range] || state.range})`;
+  preparePrint();
   let done = false;
   const finish = () => {
     if (done) return;
@@ -1212,7 +1215,21 @@ function footer() {
   $('#root').append(f);
 }
 
+// Otomatik PDF (gizli top-rallisi-rapor deposundaki e-posta işi): veri girişsiz, sayfaya dışarıdan verilir.
+// { docs, range: gün sayısı, label, created } — normal ziyaretçide bu değişken yoktur.
+function bootAuto(a) {
+  docs = a.docs.map((d) => normalize(d.id, d));
+  user = { email: '' };
+  state.range = String(a.range);
+  state.hideDev = true;
+  RANGE_LABEL[state.range] = a.label;
+  $('#updated').textContent = `${fmtN(docs.length)} kayıt`;
+  preparePrint(a.created);
+  document.body.dataset.ready = '1';
+}
+
 async function boot() {
+  if (window.__RAPOR_AUTO__) { bootAuto(window.__RAPOR_AUTO__); return; }
   if (!FB.projectId) {
     gate('Rapor henüz bir Firebase projesine bağlanmadı (FB ayarları boş).', false);
     return;
